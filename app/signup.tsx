@@ -1,41 +1,55 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const { token, login } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const router = useRouter();
+
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (token) return <Redirect href="/(tabs)" />;
 
-  const handleLogin = async () => {
+  const handleSignup = async () => {
+    if (password !== passwordConfirmation) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/auth`, {
+      const response = await fetch(`${API_BASE}/api/create-account`, {
         method: 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          user: { name, email, password, password_confirmation: passwordConfirmation },
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message ?? 'Invalid credentials');
+        setError(data.message ?? 'Could not create account');
         return;
       }
 
-      login(data.token);
+      if (data.token) {
+        login(data.token);
+      } else {
+        router.replace('/login');
+      }
     } catch {
       setError('Connection error');
     } finally {
@@ -44,8 +58,20 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Park App</Text>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.title}>Create Account</Text>
+
+      <Text style={styles.label}>Name</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Full name"
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="words"
+      />
 
       <Text style={styles.label}>Email</Text>
       <TextInput
@@ -66,30 +92,39 @@ export default function LoginScreen() {
         secureTextEntry
       />
 
+      <Text style={styles.label}>Confirm Password</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm password"
+        value={passwordConfirmation}
+        onChangeText={setPasswordConfirmation}
+        secureTextEntry
+      />
+
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+      <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Login</Text>
+          <Text style={styles.buttonText}>Create Account</Text>
         )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => router.replace('/signup')}>
-          <Text style={styles.footerLink}>Sign up</Text>
+        <Text style={styles.footerText}>Already have an account? </Text>
+        <TouchableOpacity onPress={() => router.replace('/login')}>
+          <Text style={styles.footerLink}>Log in</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     container: {
-      flex: 1,
+      flexGrow: 1,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.background,

@@ -1,14 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
 
+import ActiveReservationScreen from '@/components/active-reservation-screen';
+import RequireVehicleScreen from '@/components/require-vehicle-screen';
 import { useAuth } from '@/context/auth';
+import { useMe } from '@/context/me';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 export default function TabLayout() {
   const { token } = useAuth();
+  const { me, loading, error, refresh } = useMe();
   const theme = useAppTheme();
 
   if (!token) return <Redirect href="/login" />;
+
+  if (loading || (!me && !error)) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.pageBackground }}>
+        <ActivityIndicator size="large" color={theme.tint} />
+      </View>
+    );
+  }
+
+  if (me && me.user_vehicles.length === 0) {
+    return <RequireVehicleScreen onDismiss={refresh} />;
+  }
+
+  if (me?.active_reservation) {
+    return <ActiveReservationScreen reservation={me.active_reservation} onDismiss={refresh} />;
+  }
 
   return (
     <Tabs

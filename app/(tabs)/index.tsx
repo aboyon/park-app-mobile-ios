@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ParkingDetail from '@/components/parking-detail';
-import { useAuth } from '@/context/auth';
 import { API_BASE, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
+import { useAuth } from '@/context/auth';
+import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type Rate = {
@@ -28,6 +29,7 @@ type Parking = {
 
 export default function IndexScreen() {
   const { token } = useAuth();
+  const { me } = useMe();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const [speed, setSpeed] = useState<number | null>(null);
@@ -37,11 +39,16 @@ export default function IndexScreen() {
   const [manualLoading, setManualLoading] = useState(false);
   const lastCoords = useRef<{ latitude: number; longitude: number } | null>(null);
 
+  const nearbyRadius = useRef<number>(NEARBY_RADIUS_METRES);
   const isNotDriving = speed !== null && speed <= MIN_DRIVING_SPEED_KMH;
+
+  useEffect(() => {
+    if (me?.notifiable_distance) nearbyRadius.current = me.notifiable_distance;
+  }, [me?.notifiable_distance]);
 
   const fetchNearbyParkings = async (latitude: number, longitude: number) => {
     try {
-      const url = `${API_BASE}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${NEARBY_RADIUS_METRES}`;
+      const url = `${API_BASE}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${nearbyRadius.current}`;
       const response = await fetch(url, { headers: apiHeaders(token!) });
       const data = await response.json();
       setParkings(data);

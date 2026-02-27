@@ -12,9 +12,19 @@ import {
   View,
 } from 'react-native';
 
-import { useAuth } from '@/context/auth';
+import { Picker } from '@react-native-picker/picker';
+
 import { API_BASE, apiHeaders } from '@/constants/config';
+import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+
+const DISTANCE_OPTIONS: { value: number; label: string }[] = [
+  { value: 500,   label: '500 m' },
+  { value: 1000,  label: '1 km' },
+  { value: 3000,  label: '3 km' },
+  { value: 10000, label: '10 km' },
+  { value: 15000, label: '15 km' },
+];
 
 type User = {
   name: string;
@@ -31,7 +41,7 @@ export default function ProfileScreen() {
   const [fetchError, setFetchError] = useState('');
 
   const [name, setName] = useState('');
-  const [notifiableDistance, setNotifiableDistance] = useState('');
+  const [notifiableDistance, setNotifiableDistance] = useState<number>(500);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -45,7 +55,7 @@ export default function ProfileScreen() {
       const data = await response.json();
       setUser(data);
       setName(data.name);
-      setNotifiableDistance(String(data.notifiable_distance));
+      setNotifiableDistance(data.notifiable_distance);
     } catch {
       setFetchError('Could not load profile');
     } finally {
@@ -72,9 +82,9 @@ export default function ProfileScreen() {
         method: 'PATCH',
         headers: apiHeaders(token!),
         body: JSON.stringify({
-          user: {
+          profile: {
             name,
-            notifiable_distance: Number(notifiableDistance),
+            notifiable_distance: notifiableDistance,
           },
         }),
       });
@@ -97,7 +107,7 @@ export default function ProfileScreen() {
 
   const isDirty =
     user !== null &&
-    (name !== user.name || notifiableDistance !== String(user.notifiable_distance));
+    (name !== user.name || notifiableDistance !== user.notifiable_distance);
 
   if (loading) {
     return (
@@ -145,14 +155,19 @@ export default function ProfileScreen() {
             <Text style={styles.readonlyText}>{user?.email}</Text>
           </View>
 
-          <Text style={styles.label}>Notification distance (m)</Text>
-          <TextInput
-            style={styles.input}
-            value={notifiableDistance}
-            onChangeText={(v) => { setNotifiableDistance(v); setSaveSuccess(false); }}
-            placeholder="Distance in metres"
-            keyboardType="numeric"
-          />
+          <Text style={styles.label}>Notification distance</Text>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={notifiableDistance}
+              onValueChange={(value) => { setNotifiableDistance(value); setSaveSuccess(false); }}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              {DISTANCE_OPTIONS.map(({ value, label }) => (
+                <Picker.Item key={value} label={label} value={value} />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         {saveError !== '' && <Text style={styles.errorText}>{saveError}</Text>}
@@ -223,6 +238,19 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
       borderRadius: 8,
       padding: 11,
+      fontSize: 15,
+      color: theme.text,
+    },
+    pickerWrapper: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 8,
+      overflow: 'hidden',
+    },
+    picker: {
+      color: theme.text,
+    },
+    pickerItem: {
       fontSize: 15,
       color: theme.text,
     },
