@@ -1,5 +1,4 @@
-// export const API_BASE = 'https://parkapp-a6c4d3dbb450.herokuapp.com';
-export const API_BASE = 'http://192.168.1.56';
+export const API_BASE = 'https://parkapp-a6c4d3dbb450.herokuapp.com';
 
 export const NEARBY_RADIUS_METRES = 500;
 export const MIN_DRIVING_SPEED_KMH = 10;
