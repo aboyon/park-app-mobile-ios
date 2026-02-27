@@ -1,98 +1,215 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import * as Location from 'expo-location';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import ParkingDetail from '@/components/parking-detail';
+import { useAuth } from '@/context/auth';
+import { API_BASE, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-export default function HomeScreen() {
+type Rate = {
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  rate_per_hour: number;
+};
+
+type Parking = {
+  id: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distance: number;
+  available_slots: number;
+  keep_slot_open_minutes: number;
+  rates: Rate[];
+};
+
+export default function IndexScreen() {
+  const { token } = useAuth();
+  const theme = useAppTheme();
+  const styles = makeStyles(theme);
+  const [speed, setSpeed] = useState<number | null>(null);
+  const [status, setStatus] = useState('waiting...');
+  const [parkings, setParkings] = useState<Parking[]>([]);
+  const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
+  const lastCoords = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  const isNotDriving = speed !== null && speed <= MIN_DRIVING_SPEED_KMH;
+
+  const fetchNearbyParkings = async (latitude: number, longitude: number) => {
+    try {
+      const url = `${API_BASE}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${NEARBY_RADIUS_METRES}`;
+      const response = await fetch(url, { headers: apiHeaders(token!) });
+      const data = await response.json();
+      setParkings(data);
+      setStatus(`Found ${data.length} parkings nearby`);
+    } catch {
+      setStatus('❌ API error');
+    }
+  };
+
+  const handleManualSearch = async () => {
+    if (!lastCoords.current) return;
+    setManualLoading(true);
+    await fetchNearbyParkings(lastCoords.current.latitude, lastCoords.current.longitude);
+    setManualLoading(false);
+  };
+
+  useEffect(() => {
+    let subscriber: Location.LocationSubscription | null = null;
+
+    const startTracking = async () => {
+      const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
+      if (permStatus !== 'granted') {
+        setStatus('Location permission denied');
+        return;
+      }
+
+      subscriber = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
+        (location) => {
+          const { latitude, longitude } = location.coords;
+          lastCoords.current = { latitude, longitude };
+          const speedMs = location.coords.speed ?? 0;
+          const speedKmh = Math.round(speedMs * 3.6);
+          setSpeed(speedKmh);
+
+          if (speedKmh > MIN_DRIVING_SPEED_KMH) {
+            fetchNearbyParkings(latitude, longitude);
+          } else {
+            setStatus('🅿️ Not driving');
+            setParkings([]);
+          }
+        }
+      );
+    };
+
+    startTracking();
+    return () => {
+      subscriber?.remove();
+    };
+  }, []);
+
+  if (selectedParking) {
+    return <ParkingDetail parking={selectedParking} onBack={() => setSelectedParking(null)} />;
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <Text style={styles.title}>Park App</Text>
+      <Text style={styles.status}>{status}</Text>
+      <Text style={styles.speed}>Speed: {speed !== null ? `${speed} km/h` : '---'}</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {isNotDriving && (
+        <TouchableOpacity
+          style={[styles.manualButton, manualLoading && styles.manualButtonDisabled]}
+          onPress={handleManualSearch}
+          disabled={manualLoading}
+        >
+          {manualLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.manualButtonText}>Search Nearby Parkings</Text>
+          )}
+        </TouchableOpacity>
+      )}
+
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        {parkings.map((parking, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.card}
+            onPress={() => setSelectedParking(parking)}
+          >
+            <Text style={styles.cardName}>{parking.name}</Text>
+            <Text style={styles.cardAddress}>📍 {parking.address}</Text>
+            <Text style={styles.cardArrow}>→</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+function makeStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.pageBackground,
+      paddingTop: 60,
+      padding: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginBottom: 10,
+      textAlign: 'center',
+      color: theme.text,
+    },
+    status: {
+      fontSize: 16,
+      marginBottom: 4,
+      textAlign: 'center',
+      color: theme.text,
+    },
+    speed: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    manualButton: {
+      backgroundColor: '#007AFF',
+      padding: 14,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    manualButtonDisabled: {
+      opacity: 0.6,
+    },
+    manualButtonText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      gap: 12,
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 3,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cardName: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      flex: 1,
+      color: theme.text,
+    },
+    cardAddress: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      flex: 2,
+    },
+    cardArrow: {
+      fontSize: 18,
+      color: '#007AFF',
+      marginLeft: 10,
+    },
+  });
+}
