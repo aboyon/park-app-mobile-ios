@@ -6,30 +6,73 @@ import { StyleSheet, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
-import { useMe, MeProvider } from '@/context/me';
+import { MeProvider, useMe } from '@/context/me';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function NotificationOverlay() {
   const { notificationAlert, clearNotificationAlert } = useMe();
+  const theme = useAppTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     if (!notificationAlert) return;
-    const timer = setTimeout(clearNotificationAlert, 4000);
+    const timer = setTimeout(clearNotificationAlert, 5000);
     return () => clearTimeout(timer);
   }, [notificationAlert]);
 
   if (!notificationAlert) return null;
 
   const isExpired = notificationAlert.type === 'reservation_expired';
+  const styles = makeOverlayStyles(theme, isDark, isExpired);
 
   return (
     <View style={styles.overlay}>
-      <View style={[styles.alertBox, isExpired ? styles.alertExpired : styles.alertCancelled]}>
+      <View style={styles.alertBox}>
         <Text style={styles.alertIcon}>{isExpired ? '⏰' : '✕'}</Text>
         <Text style={styles.alertMessage}>{notificationAlert.message}</Text>
       </View>
     </View>
   );
+}
+
+function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean) {
+  const cancelledBg = isDark ? '#3d1010' : '#ea867e';
+  const expiredBg   = isDark ? '#0d2b3d' : '#90daf2';
+
+  return StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.55)',
+      zIndex: 999,
+    },
+    alertBox: {
+      marginHorizontal: 32,
+      borderRadius: 16,
+      padding: 15,
+      alignItems: 'center',
+      backgroundColor: isExpired ? expiredBg : cancelledBg,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.5 : 0.2,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    alertIcon: {
+      fontSize: 36,
+      marginBottom: 12,
+    },
+    alertMessage: {
+      fontSize: 17,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 24,
+      color: theme.text,
+    },
+  });
 }
 
 export default function RootLayout() {
@@ -51,41 +94,3 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    zIndex: 999,
-  },
-  alertBox: {
-    marginHorizontal: 32,
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  alertCancelled: {
-    backgroundColor: '#fff1f0',
-  },
-  alertExpired: {
-    backgroundColor: '#f5f5f5',
-  },
-  alertIcon: {
-    fontSize: 36,
-    marginBottom: 12,
-  },
-  alertMessage: {
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 24,
-    color: '#1a1a1a',
-  },
-});

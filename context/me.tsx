@@ -68,9 +68,15 @@ const MeContext = createContext<MeContextType>({
 // registered once per app session regardless of how many times the user logs in.
 let registeredPushToken: string | null = null;
 
-const NOTIFICATION_MESSAGES: Record<string, string> = {
-  reservation_cancelled: 'Your reservation has been cancelled.',
-  reservation_expired: 'Your reservation has expired.',
+const NOTIFICATION_MESSAGES: Record<string, { default: string; admin: string }> = {
+  reservation_cancelled: {
+    default: 'Your reservation has been cancelled.',
+    admin: 'Your reservation has been cancelled by the parking.',
+  },
+  reservation_expired: {
+    default: 'Your reservation has expired.',
+    admin: 'Your reservation has been expired by the parking.',
+  },
 };
 
 Notifications.setNotificationHandler({
@@ -142,10 +148,14 @@ export function MeProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   const handleIncomingNotification = useCallback((notification: Notifications.Notification) => {
-    const data = notification.request.content.data as { type?: string };
+    const data = notification.request.content.data as { type?: string; triggered_by?: string };
     const type = data?.type;
     if (type === 'reservation_cancelled' || type === 'reservation_expired') {
-      setNotificationAlert({ type, message: NOTIFICATION_MESSAGES[type] });
+      const byAdmin = data?.triggered_by === 'admin';
+      const message = byAdmin
+        ? NOTIFICATION_MESSAGES[type].admin
+        : NOTIFICATION_MESSAGES[type].default;
+      setNotificationAlert({ type, message });
       refresh();
     }
   }, [refresh]);
