@@ -1,16 +1,18 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 
 import ReservationDetail, { type Reservation } from '@/components/reservation-detail';
-import { useAuth } from '@/context/auth';
 import { API_BASE, apiHeaders } from '@/constants/config';
+import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-const STATUS_DOT: Record<string, string> = {
-  active:    '#34c759',
-  expired:   '#999',
-  cancelled: '#ff3b30',
+const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  pending:        { bg: '#eff6ff', text: '#2563eb', label: 'Pending' },
+  in_progress:    { bg: '#f0fdf4', text: '#15803d', label: 'In progress' },
+  completed:      { bg: '#f0fdf4', text: '#15803d', label: 'Completed' },
+  expired:        { bg: '#f5f5f5', text: '#6b7280', label: 'Expired' },
+  cancelled:      { bg: '#fff1f0', text: '#ff3b30', label: 'Cancelled' },
 };
 
 function formatDate(iso: string) {
@@ -100,16 +102,21 @@ export default function ReservationsScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} onPress={() => setSelected(item)}>
               <View style={styles.cardLeft}>
-                <View style={[styles.dot, { backgroundColor: STATUS_DOT[item.status] ?? '#999' }]} />
-                <View>
-                  <Text style={styles.cardId}>Reservation #{item.id}</Text>
-                  <Text style={styles.cardDate}>{formatDate(item.start_time)}</Text>
-                </View>
+                <Text style={styles.cardId}>{item.parking.name}</Text>
+                <Text style={styles.cardDate}>{formatDate(item.start_time)}</Text>
+                <Text style={styles.cardPlate}>{item.vehicle.license_plate}</Text>
+                {(() => {
+                  const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
+                  return (
+                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                      <Text style={[styles.badgeText, { color: badge.text }]}>
+                        {badge.label}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
               <View style={styles.cardRight}>
-                <Text style={styles.cardStatus}>
-                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                </Text>
                 <Text style={styles.cardArrow}>›</Text>
               </View>
             </TouchableOpacity>
@@ -159,14 +166,7 @@ function makeStyles(theme: AppTheme) {
       elevation: 2,
     },
     cardLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    dot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+      flex: 1,
     },
     cardId: {
       fontSize: 15,
@@ -178,14 +178,27 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       marginTop: 2,
     },
+    cardPlate: {
+      fontSize: 13,
+      color: theme.text,
+      fontWeight: '500',
+      marginTop: 2,
+    },
     cardRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
-    cardStatus: {
-      fontSize: 13,
-      color: theme.textSecondary,
+    badge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+      marginTop: 8,
+    },
+    badgeText: {
+      fontSize: 12,
+      fontWeight: '600',
     },
     cardArrow: {
       fontSize: 20,

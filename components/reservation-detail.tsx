@@ -1,5 +1,8 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { API_BASE, apiHeaders } from '@/constants/config';
+import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export type Reservation = {
@@ -7,9 +10,17 @@ export type Reservation = {
   start_time: string;
   end_time: string | null;
   status: string;
+  parking: {
+    name: string;
+    address: string;
+  };
+  vehicle: {
+    license_plate: string;
+  };
 };
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  pending:   { bg: '#eff6ff', text: '#2563eb' },
   active:    { bg: '#f0fdf4', text: '#15803d' },
   expired:   { bg: '#f5f5f5', text: '#999' },
   cancelled: { bg: '#fff1f0', text: '#ff3b30' },
@@ -34,13 +45,39 @@ function duration(start: string, end: string) {
 export default function ReservationDetail({
   reservation,
   onBack,
+  onCancel,
 }: {
   reservation: Reservation;
   onBack: () => void;
+  onCancel?: () => void;
 }) {
+  const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const statusStyle = STATUS_COLORS[reservation.status] ?? STATUS_COLORS.expired;
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    setCancelError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/parking-reservations/${reservation.id}`, {
+        method: 'DELETE',
+        headers: apiHeaders(token!)
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        setCancelError(data.message ?? 'Could not cancel reservation');
+        return;
+      }
+      onCancel?.();
+    } catch {
+      setCancelError('Connection error');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -50,7 +87,10 @@ export default function ReservationDetail({
 
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Reservation #{reservation.id}</Text>
+          <View style={styles.card}>
+            <Text style={styles.parkingName}>{reservation.parking.name}</Text>
+            <Text style={styles.parkingAddress}>{reservation.parking.address}</Text>
+          </View>
           <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.badgeText, { color: statusStyle.text }]}>
               {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
@@ -59,18 +99,23 @@ export default function ReservationDetail({
         </View>
 
         <View style={styles.divider} />
-
+        <View style={styles.row}>
+          <Text style={styles.label}>Vehicle</Text>
+          <Text style={styles.value}>{reservation.vehicle.license_plate}</Text>
+        </View>
         <View style={styles.row}>
           <Text style={styles.label}>Started</Text>
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
         </View>
 
-        <View style={styles.row}>
-          <Text style={styles.label}>Ended</Text>
-          <Text style={styles.value}>
-            {reservation.end_time ? formatDate(reservation.end_time) : '—'}
-          </Text>
-        </View>
+        {reservation.end_time && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Ended</Text>
+            <Text style={styles.value}>
+              {reservation.end_time ? formatDate(reservation.end_time) : '—'}
+            </Text>
+          </View>
+        )}
 
         {reservation.end_time && (
           <View style={styles.row}>
@@ -81,6 +126,23 @@ export default function ReservationDetail({
           </View>
         )}
       </View>
+
+      {reservation.status === 'pending' && onCancel && (
+        <>
+          {cancelError !== '' && <Text style={styles.cancelError}>{cancelError}</Text>}
+          <TouchableOpacity
+            style={[styles.cancelButton, cancelling && styles.cancelButtonDisabled]}
+            onPress={handleCancel}
+            disabled={cancelling}
+          >
+            {cancelling ? (
+              <ActivityIndicator color="#ff3b30" />
+            ) : (
+              <Text style={styles.cancelButtonText}>Cancel Reservation</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }
@@ -90,7 +152,7 @@ function makeStyles(theme: AppTheme) {
     container: {
       flex: 1,
       backgroundColor: theme.pageBackground,
-      padding: 20,
+      padding: 10,
       paddingTop: 60,
     },
     backButton: {
@@ -103,7 +165,7 @@ function makeStyles(theme: AppTheme) {
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 20,
+      padding: 10,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
@@ -111,7 +173,7 @@ function makeStyles(theme: AppTheme) {
       elevation: 3,
     },
     headerRow: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 16,
@@ -141,6 +203,17 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       paddingVertical: 8,
     },
+    parkingName: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    parkingAddress: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 16,
+    },
     label: {
       fontSize: 14,
       color: theme.textMuted,
@@ -152,6 +225,28 @@ function makeStyles(theme: AppTheme) {
       flexShrink: 1,
       textAlign: 'right',
       marginLeft: 16,
+    },
+    cancelButton: {
+      marginTop: 24,
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#ff3b30',
+    },
+    cancelButtonDisabled: {
+      opacity: 0.5,
+    },
+    cancelButtonText: {
+      color: '#ff3b30',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    cancelError: {
+      color: '#ff3b30',
+      fontSize: 14,
+      textAlign: 'center',
+      marginTop: 16,
     },
   });
 }

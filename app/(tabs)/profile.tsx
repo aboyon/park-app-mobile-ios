@@ -16,6 +16,7 @@ import { Picker } from '@react-native-picker/picker';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const DISTANCE_OPTIONS: { value: number; label: string }[] = [
@@ -34,6 +35,7 @@ type User = {
 
 export default function ProfileScreen() {
   const { token, logout } = useAuth();
+  const { refresh } = useMe();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const [user, setUser] = useState<User | null>(null);
@@ -98,6 +100,7 @@ export default function ProfileScreen() {
       const data = await response.json();
       setUser(data);
       setSaveSuccess(true);
+      refresh();
     } catch {
       setSaveError('Connection error');
     } finally {

@@ -1,8 +1,17 @@
+import * as Notifications from 'expo-notifications';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+
+export type Rate = {
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  rate_per_hour: number;
+};
 
 export type ActiveReservation = {
   id: number;
@@ -15,6 +24,7 @@ export type ActiveReservation = {
     name: string;
     address: string;
     keep_slot_open_minutes?: number;
+    rates?: Rate[];
   };
 };
 
@@ -31,11 +41,18 @@ type MeData = {
   user_vehicles: Vehicle[];
 };
 
+export type NotificationAlert = {
+  type: 'reservation_cancelled' | 'reservation_expired';
+  message: string;
+};
+
 type MeContextType = {
   me: MeData | null;
   loading: boolean;
   error: boolean;
   refresh: () => Promise<void>;
+  notificationAlert: NotificationAlert | null;
+  clearNotificationAlert: () => void;
 };
 
 const MeContext = createContext<MeContextType>({
@@ -43,6 +60,27 @@ const MeContext = createContext<MeContextType>({
   loading: false,
   error: false,
   refresh: () => Promise.resolve(),
+  notificationAlert: null,
+  clearNotificationAlert: () => {},
+});
+
+// Module-level: track which push token has already been sent so it's only
+// registered once per app session regardless of how many times the user logs in.
+let registeredPushToken: string | null = null;
+
+const NOTIFICATION_MESSAGES: Record<string, string> = {
+  reservation_cancelled: 'Your reservation has been cancelled.',
+  reservation_expired: 'Your reservation has expired.',
+};
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
 });
 
 export function MeProvider({ children }: { children: ReactNode }) {
@@ -50,6 +88,36 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<MeData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [notificationAlert, setNotificationAlert] = useState<NotificationAlert | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const registerPushToken = async () => {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+        });
+      }
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+      try {
+        const { data: pushToken } = await Notifications.getExpoPushTokenAsync({
+          projectId: '3cde002a-6754-482d-8754-6bd8c6e298c0',
+        });
+        if (pushToken === registeredPushToken) return;
+        await fetch(`${API_BASE}/api/app-notfication-token`, {
+          method: 'PATCH',
+          headers: apiHeaders(token),
+          body: JSON.stringify({ app_notification_token: pushToken }),
+        });
+        registeredPushToken = pushToken;
+      } catch {}
+    };
+
+    registerPushToken();
+  }, [token]);
 
   useEffect(() => {
     setMe(null);
@@ -73,8 +141,30 @@ export function MeProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, [token]);
 
+  const handleIncomingNotification = useCallback((notification: Notifications.Notification) => {
+    const data = notification.request.content.data as { type?: string };
+    const type = data?.type;
+    if (type === 'reservation_cancelled' || type === 'reservation_expired') {
+      setNotificationAlert({ type, message: NOTIFICATION_MESSAGES[type] });
+      refresh();
+    }
+  }, [refresh]);
+
+  useEffect(() => {
+    const foreground = Notifications.addNotificationReceivedListener(handleIncomingNotification);
+    const response = Notifications.addNotificationResponseReceivedListener(
+      (r) => handleIncomingNotification(r.notification),
+    );
+    return () => {
+      foreground.remove();
+      response.remove();
+    };
+  }, [handleIncomingNotification]);
+
+  const clearNotificationAlert = useCallback(() => setNotificationAlert(null), []);
+
   return (
-    <MeContext.Provider value={{ me, loading, error, refresh }}>
+    <MeContext.Provider value={{ me, loading, error, refresh, notificationAlert, clearNotificationAlert }}>
       {children}
     </MeContext.Provider>
   );

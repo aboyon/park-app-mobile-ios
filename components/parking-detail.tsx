@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpac
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type Vehicle = {
@@ -47,10 +48,10 @@ function formatRate(cents: number) {
 
 export default function ParkingDetail({ parking, onBack }: { parking: Parking; onBack: () => void }) {
   const { token } = useAuth();
+  const { refresh } = useMe();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const [reserving, setReserving] = useState(false);
-  const [reservationSuccess, setReservationSuccess] = useState(false);
   const [reservationError, setReservationError] = useState('');
 
   const [selectingVehicle, setSelectingVehicle] = useState(false);
@@ -103,7 +104,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       }
 
       setSelectingVehicle(false);
-      setReservationSuccess(true);
+      await refresh();
     } catch {
       setReservationError('Connection error');
     } finally {
@@ -155,14 +156,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
         </View>
       )}
 
-      {reservationSuccess ? (
-        <View style={styles.successBox}>
-          <Text style={styles.successText}>Reservation confirmed!</Text>
-          <Text style={styles.successSub}>
-            Your spot is held for {parking.keep_slot_open_minutes} minutes.
-          </Text>
-        </View>
-      ) : selectingVehicle ? (
+      {selectingVehicle ? (
         <View style={styles.vehiclePicker}>
           <Text style={styles.vehiclePickerTitle}>Select your vehicle</Text>
 
@@ -276,7 +270,7 @@ function makeStyles(theme: AppTheme) {
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 20,
+      padding: 10,
       marginBottom: 16,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
@@ -442,25 +436,6 @@ function makeStyles(theme: AppTheme) {
     cancelPickerText: {
       fontSize: 15,
       color: theme.textSecondary,
-    },
-    successBox: {
-      backgroundColor: '#f0fdf4',
-      borderWidth: 1,
-      borderColor: '#34c759',
-      borderRadius: 10,
-      padding: 16,
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    successText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#15803d',
-      marginBottom: 4,
-    },
-    successSub: {
-      fontSize: 13,
-      color: '#166534',
     },
     errorText: {
       color: '#ff3b30',

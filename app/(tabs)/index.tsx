@@ -131,8 +131,10 @@ export default function IndexScreen() {
             style={styles.card}
             onPress={() => setSelectedParking(parking)}
           >
-            <Text style={styles.cardName}>{parking.name}</Text>
-            <Text style={styles.cardAddress}>📍 {parking.address}</Text>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardName}>{parking.name}</Text>
+              <Text style={styles.cardAddress}>📍 {parking.address}</Text>
+            </View>
             <Text style={styles.cardArrow}>→</Text>
           </TouchableOpacity>
         ))}
@@ -200,23 +202,24 @@ function makeStyles(theme: AppTheme) {
       elevation: 3,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+    },
+    cardInfo: {
+      flex: 1,
     },
     cardName: {
       fontSize: 16,
       fontWeight: 'bold',
-      flex: 1,
       color: theme.text,
+      marginBottom: 4,
     },
     cardAddress: {
       fontSize: 13,
       color: theme.textSecondary,
-      flex: 2,
     },
     cardArrow: {
       fontSize: 18,
       color: '#007AFF',
-      marginLeft: 10,
+      marginLeft: 12,
     },
   });
 }
