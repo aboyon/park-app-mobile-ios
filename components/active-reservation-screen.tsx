@@ -91,7 +91,7 @@ export default function ActiveReservationScreen({
     if (isInProgress || keepMinutes == null) return;
 
     const autoCancel = () => {
-      fetch(`${API_BASE}/api/parking-reservations/${reservation.id}`, {
+      fetch(`${API_BASE}/api/parking-reservations/${reservation.id}?expired_by_app=true`, {
         method: 'DELETE',
         headers: apiHeaders(token!),
       })

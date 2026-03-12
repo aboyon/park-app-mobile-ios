@@ -8,11 +8,9 @@ import { useAuth } from '@/context/auth';
 import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-type Rate = {
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
-  rate_per_hour: number;
+type ParkingRate = {
+  week_of_day: number;
+  rate_per_hour_cents: number;
 };
 
 type Parking = {
@@ -24,8 +22,20 @@ type Parking = {
   distance: number;
   available_slots: number;
   keep_slot_open_minutes: number;
-  rates: Rate[];
+  rate_policy_strategy: string;
+  today_penalization_rate: string | null;
+  today_rate_cents: number;
+  parking_rates: ParkingRate[];
 };
+
+function getTodayRate(rates: ParkingRate[]): ParkingRate | null {
+  const today = new Date().getDay(); // 0 = Sunday … 6 = Saturday
+  return rates.find((r) => r.week_of_day === today) ?? null;
+}
+
+function formatRate(cents: number): string {
+  return `${(cents / 100).toFixed(2)}/h`;
+}
 
 export default function IndexScreen() {
   const { token } = useAuth();
@@ -133,7 +143,28 @@ export default function IndexScreen() {
           >
             <View style={styles.cardInfo}>
               <Text style={styles.cardName}>{parking.name}</Text>
-              <Text style={styles.cardAddress}>📍 {parking.address}</Text>
+              <Text style={styles.cardAddress}>📍{parking.address}</Text>
+              <Text style={styles.cardDistance}>Distance: {(parking.distance / 1000).toFixed(1)} km</Text>
+              {(() => {
+                const rate = getTodayRate(parking.parking_rates ?? []);
+                return rate ? (
+                  <Text style={styles.cardRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                ) : null;
+              })()}
+              {parking.rate_policy_strategy === 'flexible' && (
+                <View style={styles.policyRow}>
+                  <View style={[styles.policyBadge, styles.policyFlexible]}>
+                    <Text style={styles.policyBadgeText}>No charges if you don't get to park</Text>
+                  </View>
+                </View>
+              )}
+              {parking.rate_policy_strategy === 'strict' && (
+                <View style={styles.policyRow}>
+                  <View style={[styles.policyBadge, styles.policyStrict]}>
+                    <Text style={styles.policyBadgeText}>You'll be charged with one hour if you don't get there</Text>
+                  </View>
+                </View>
+              )}
             </View>
             <Text style={styles.cardArrow}>→</Text>
           </TouchableOpacity>
@@ -214,7 +245,44 @@ function makeStyles(theme: AppTheme) {
     },
     cardAddress: {
       fontSize: 13,
+      fontWeight: 'bold',
       color: theme.textSecondary,
+    },
+    cardDistance: {
+      fontSize: 13,
+      fontWeight: 'bold',
+      color: theme.textSecondary,
+      marginBottom: 10,
+      marginTop: 10
+    },
+    cardRate: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#007AFF',
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    policyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+      gap: 8,
+    },
+    policyBadge: {
+      paddingHorizontal: 3,
+      paddingVertical: 3,
+      borderRadius: 20,
+    },
+    policyFlexible: {
+      color: '#dcfce7',
+    },
+    policyStrict: {
+      color: '#fef9c3',
+    },
+    policyBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#1a1a1a',
     },
     cardArrow: {
       fontSize: 18,

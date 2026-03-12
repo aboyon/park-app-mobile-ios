@@ -19,12 +19,13 @@ const VEHICLE_ICON: Record<Vehicle['vehicle_type'], string> = {
   motorcycle: '🏍️',
 };
 
-type Rate = {
-  day_of_week: string;
-  start_time: string;
-  end_time: string;
+type VehicleRate = {
   rate_per_hour: number;
+  rate_per_hour_cents: number;
+  wday: number;
 };
+
+type VehicleRates = Record<string, VehicleRate>;
 
 type Parking = {
   id: number;
@@ -35,16 +36,22 @@ type Parking = {
   distance: number;
   available_slots: number;
   keep_slot_open_minutes: number;
-  rates: Rate[];
+  rate_policy_strategy: string;
+  today_rate_cents: VehicleRates;
+  today_penalization_rates_cents: VehicleRates;
 };
 
-function formatTime(iso: string) {
-  return new Date(iso).toISOString().slice(11, 16);
-}
+const VEHICLE_RATE_ICON: Record<string, string> = {
+  car: '🚗',
+  truck: '🚚',
+  motorcycle: '🏍️',
+  pickup: '🛻',
+};
 
 function formatRate(cents: number) {
-  return `€${(cents / 100).toFixed(2)}/h`;
+  return `$${(cents / 100).toFixed(2)}/h`;
 }
+
 
 export default function ParkingDetail({ parking, onBack }: { parking: Parking; onBack: () => void }) {
   const { token } = useAuth();
@@ -141,20 +148,38 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
         </View>
       </View>
 
-      {parking.rates?.length > 0 && (
+      {Object.keys(parking.today_rate_cents ?? {}).length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Rates</Text>
-          {parking.rates.map((rate, i) => (
-            <View key={i} style={[styles.rateRow, i < parking.rates.length - 1 && styles.rateRowBorder]}>
-              <Text style={styles.rateDay}>{rate.day_of_week}</Text>
-              <Text style={styles.rateTime}>
-                {formatTime(rate.start_time)} – {formatTime(rate.end_time)}
+          <Text style={styles.sectionTitle}>Today's rates</Text>
+          {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => (
+            <View key={type} style={[styles.rateRow, i < arr.length - 1 && styles.rateRowBorder]}>
+              <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
+              <Text style={styles.rateVehicle}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
-              <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour)}</Text>
+              <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
             </View>
           ))}
         </View>
       )}
+
+      {parking.rate_policy_strategy === 'strict' &&
+        Object.keys(parking.today_penalization_rates_cents ?? {}).length > 0 && (
+          <View style={styles.warningCard}>
+            <Text style={styles.warningTitle}>
+              ⚠️ Charges if you don't arrive within {parking.keep_slot_open_minutes} min
+            </Text>
+            {Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
+              <View key={type} style={styles.rateRow}>
+                <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
+                <Text style={styles.warningVehicle}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+                <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
       {selectingVehicle ? (
         <View style={styles.vehiclePicker}>
@@ -317,35 +342,57 @@ function makeStyles(theme: AppTheme) {
       color: '#ff3b30',
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: theme.text,
-      marginBottom: 12,
+      marginBottom: 8,
     },
     rateRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
+      paddingVertical: 8,
     },
     rateRowBorder: {
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.divider,
     },
-    rateDay: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.text,
-      width: 90,
+    rateIcon: {
+      fontSize: 18,
+      marginRight: 8,
     },
-    rateTime: {
-      fontSize: 13,
-      color: theme.textSecondary,
+    rateVehicle: {
       flex: 1,
+      fontSize: 14,
+      color: theme.text,
     },
     ratePrice: {
       fontSize: 14,
-      fontWeight: '600',
+      fontWeight: '700',
       color: '#007AFF',
+    },
+    warningCard: {
+      backgroundColor: '#fff7ed',
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: '#fed7aa',
+    },
+    warningTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#92400e',
+      marginBottom: 8,
+    },
+    warningVehicle: {
+      flex: 1,
+      fontSize: 14,
+      color: '#92400e',
+    },
+    warningRate: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#92400e',
     },
     reserveButton: {
       backgroundColor: '#34c759',

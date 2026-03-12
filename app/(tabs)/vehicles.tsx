@@ -19,7 +19,7 @@ import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-type VehicleType = 'car' | 'truck' | 'motorcycle';
+type VehicleType = 'car' | 'truck' | 'motorcycle' | 'pickup' | 'suv';
 
 type Vehicle = {
   id: number;
@@ -37,14 +37,18 @@ type FormState = {
 const BLANK_FORM: FormState = { license_plate: '', vehicle_type: 'car', is_default: false };
 
 const VEHICLE_TYPES: { value: VehicleType; label: string; icon: string }[] = [
-  { value: 'car', label: 'Car', icon: '🚗' },
-  { value: 'truck', label: 'Truck', icon: '🚚' },
+  { value: 'car',        label: 'Car',        icon: '🚗' },
+  { value: 'truck',      label: 'Truck',      icon: '🚚' },
+  { value: 'pickup',     label: 'Pickup',     icon: '🛻' },
+  { value: 'suv',        label: 'SUV',        icon: '🚙' },
   { value: 'motorcycle', label: 'Motorcycle', icon: '🏍️' },
 ];
 
 const VEHICLE_ICON: Record<VehicleType, string> = {
-  car: '🚗',
-  truck: '🚚',
+  car:        '🚗',
+  truck:      '🚚',
+  pickup:     '🛻',
+  suv:        '🚙',
   motorcycle: '🏍️',
 };
 
