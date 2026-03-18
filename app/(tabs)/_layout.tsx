@@ -66,6 +66,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="car-outline" size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="payments"
+        options={{
+          title: 'Payments',
+          tabBarIcon: ({ color }) => <Ionicons name="card-outline" size={24} color={color} />,
+        }}
+      />
       <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="home-tab" options={{ href: null }} />
       <Tabs.Screen name="parking-detail" options={{ href: null }} />

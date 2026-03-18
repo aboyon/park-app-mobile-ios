@@ -37,6 +37,7 @@ type Parking = {
   available_slots: number;
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
+  lock_slot_charge_policy: string;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
 };
@@ -169,15 +170,21 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
             <Text style={styles.warningTitle}>
               ⚠️ Charges if you don't arrive within {parking.keep_slot_open_minutes} min
             </Text>
-            {Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
-              <View key={type} style={styles.rateRow}>
-                <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
-                <Text style={styles.warningVehicle}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Text>
-                <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
-              </View>
-            ))}
+            {parking.lock_slot_charge_policy === 'flat_rate' ? (
+              <Text style={styles.warningRate}>
+                {formatRate(Object.values(parking.today_penalization_rates_cents)[0].rate_per_hour_cents)}
+              </Text>
+            ) : (
+              Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
+                <View key={type} style={styles.rateRow}>
+                  <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
+                  <Text style={styles.warningVehicle}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Text>
+                  <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                </View>
+              ))
+            )}
           </View>
         )}
 

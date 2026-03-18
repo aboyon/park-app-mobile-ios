@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import type { ReactNode } from 'react';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
@@ -42,7 +42,7 @@ type MeData = {
 };
 
 export type NotificationAlert = {
-  type: 'reservation_cancelled' | 'reservation_expired';
+  type: 'reservation_cancelled' | 'reservation_expired' | 'payment_completed';
   message: string;
 };
 
@@ -95,6 +95,8 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [notificationAlert, setNotificationAlert] = useState<NotificationAlert | null>(null);
+  const meRef = useRef(me);
+  useEffect(() => { meRef.current = me; }, [me]);
 
   useEffect(() => {
     if (!token) return;
@@ -156,6 +158,10 @@ export function MeProvider({ children }: { children: ReactNode }) {
         ? NOTIFICATION_MESSAGES[type].admin
         : NOTIFICATION_MESSAGES[type].default;
       setNotificationAlert({ type, message });
+      refresh();
+    } else if (type === 'notify_payment_completed') {
+      const parkingName = meRef.current?.active_reservation?.parking.name ?? 'the parking';
+      setNotificationAlert({ type: 'payment_completed', message: `Thanks for parking at ${parkingName}!` });
       refresh();
     }
   }, [refresh]);

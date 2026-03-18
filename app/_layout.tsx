@@ -24,22 +24,25 @@ function NotificationOverlay() {
 
   if (!notificationAlert) return null;
 
-  const isExpired = notificationAlert.type === 'reservation_expired';
-  const styles = makeOverlayStyles(theme, isDark, isExpired);
+  const { type } = notificationAlert;
+  const isExpired = type === 'reservation_expired';
+  const isPayment = type === 'payment_completed';
+  const styles = makeOverlayStyles(theme, isDark, isExpired, isPayment);
 
   return (
     <View style={styles.overlay}>
       <View style={styles.alertBox}>
-        <Text style={styles.alertIcon}>{isExpired ? '⏰' : '✕'}</Text>
+        <Text style={styles.alertIcon}>{isPayment ? '✅' : isExpired ? '⏰' : '✕'}</Text>
         <Text style={styles.alertMessage}>{notificationAlert.message}</Text>
       </View>
     </View>
   );
 }
 
-function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean) {
+function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean, isPayment: boolean) {
   const cancelledBg = isDark ? '#3d1010' : '#ea867e';
   const expiredBg   = isDark ? '#0d2b3d' : '#90daf2';
+  const paymentBg   = isDark ? '#0d3320' : '#dcfce7';
 
   return StyleSheet.create({
     overlay: {
@@ -54,7 +57,7 @@ function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean)
       borderRadius: 16,
       padding: 15,
       alignItems: 'center',
-      backgroundColor: isExpired ? expiredBg : cancelledBg,
+      backgroundColor: isPayment ? paymentBg : isExpired ? expiredBg : cancelledBg,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: isDark ? 0.5 : 0.2,
