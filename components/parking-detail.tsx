@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -59,10 +60,12 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   const { refresh } = useMe();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const router = useRouter();
   const [reserving, setReserving] = useState(false);
   const [reservationError, setReservationError] = useState('');
 
   const [selectingVehicle, setSelectingVehicle] = useState(false);
+  const [noPaymentMethod, setNoPaymentMethod] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [vehiclesError, setVehiclesError] = useState('');
@@ -74,20 +77,30 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   };
 
   const handleReservePress = async () => {
-    setSelectingVehicle(true);
     setVehiclesError('');
     setVehiclesLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/my-vehicles`, {
-        headers: apiHeaders(token!),
-      });
-      if (!response.ok) throw new Error();
-      const data: Vehicle[] = await response.json();
-      setVehicles(data);
-      const defaultVehicle = data.find((v) => v.is_default);
-      setSelectedVehicleId(defaultVehicle?.id ?? data[0]?.id ?? null);
+      const [vehiclesRes, paymentsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/my-vehicles`, { headers: apiHeaders(token!) }),
+        fetch(`${API_BASE}/api/payment-methods`, { headers: apiHeaders(token!) }),
+      ]);
+      if (!vehiclesRes.ok) throw new Error();
+      const vehiclesData: Vehicle[] = await vehiclesRes.json();
+      const paymentsData: unknown[] = paymentsRes.ok ? await paymentsRes.json() : [];
+
+      if (paymentsData.length === 0) {
+        setNoPaymentMethod(true);
+        setSelectingVehicle(true);
+        return;
+      }
+
+      setNoPaymentMethod(false);
+      setVehicles(vehiclesData);
+      const defaultVehicle = vehiclesData.find((v) => v.is_default);
+      setSelectedVehicleId(defaultVehicle?.id ?? vehiclesData[0]?.id ?? null);
+      setSelectingVehicle(true);
     } catch {
-      setVehiclesError('Could not load vehicles');
+      setVehiclesError('Could not load data');
     } finally {
       setVehiclesLoading(false);
     }
@@ -190,6 +203,30 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
 
       {selectingVehicle ? (
         <View style={styles.vehiclePicker}>
+          {noPaymentMethod ? (
+            <>
+              <View style={styles.noPaymentCard}>
+                <Text style={styles.noPaymentIcon}>💳</Text>
+                <Text style={styles.noPaymentTitle}>No payment method</Text>
+                <Text style={styles.noPaymentMessage}>
+                  You need to add a payment method before reserving a spot.
+                </Text>
+                <TouchableOpacity
+                  style={styles.addPaymentButton}
+                  onPress={() => { setSelectingVehicle(false); router.navigate('/(tabs)/payments'); }}
+                >
+                  <Text style={styles.addPaymentButtonText}>Add Payment Method</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.cancelPickerButton}
+                onPress={() => { setSelectingVehicle(false); setNoPaymentMethod(false); }}
+              >
+                <Text style={styles.cancelPickerText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
           <Text style={styles.vehiclePickerTitle}>Select your vehicle</Text>
 
           {vehiclesLoading ? (
@@ -254,6 +291,8 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
           >
             <Text style={styles.cancelPickerText}>Cancel</Text>
           </TouchableOpacity>
+            </>
+          )}
         </View>
       ) : (
         <TouchableOpacity
@@ -490,6 +529,45 @@ function makeStyles(theme: AppTheme) {
     cancelPickerText: {
       fontSize: 15,
       color: theme.textSecondary,
+    },
+    noPaymentCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: 'center',
+      marginBottom: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    noPaymentIcon: { fontSize: 48, marginBottom: 12 },
+    noPaymentTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    noPaymentMessage: {
+      fontSize: 14,
+      color: theme.textMuted,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    addPaymentButton: {
+      backgroundColor: '#007AFF',
+      paddingHorizontal: 28,
+      paddingVertical: 13,
+      borderRadius: 12,
+      alignItems: 'center',
+      width: '100%',
+    },
+    addPaymentButtonText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '700',
     },
     errorText: {
       color: '#ff3b30',
