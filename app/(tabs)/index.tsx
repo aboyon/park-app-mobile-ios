@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { MapPin, RefreshCw } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -29,12 +30,12 @@ type Parking = {
 };
 
 function getTodayRate(rates: ParkingRate[]): ParkingRate | null {
-  const today = new Date().getDay(); // 0 = Sunday … 6 = Saturday
+  const today = new Date().getDay();
   return rates.find((r) => r.week_of_day === today) ?? null;
 }
 
 function formatRate(cents: number): string {
-  return `${(cents / 100).toFixed(2)}/h`;
+  return `€${(cents / 100).toFixed(2)}/h`;
 }
 
 export default function IndexScreen() {
@@ -43,7 +44,7 @@ export default function IndexScreen() {
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const [speed, setSpeed] = useState<number | null>(null);
-  const [status, setStatus] = useState('waiting...');
+  const [status, setStatus] = useState('Waiting for location...');
   const [parkings, setParkings] = useState<Parking[]>([]);
   const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
   const [manualLoading, setManualLoading] = useState(false);
@@ -64,7 +65,7 @@ export default function IndexScreen() {
       setParkings(data);
       setStatus(`Found ${data.length} parkings nearby`);
     } catch {
-      setStatus('❌ API error');
+      setStatus('Could not fetch parkings');
     }
   };
 
@@ -97,7 +98,7 @@ export default function IndexScreen() {
           if (speedKmh > MIN_DRIVING_SPEED_KMH) {
             fetchNearbyParkings(latitude, longitude);
           } else {
-            setStatus('🅿️ Not driving');
+            setStatus('Not driving — tap refresh to search');
             setParkings([]);
           }
         }
@@ -116,59 +117,76 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Park App</Text>
-      <Text style={styles.status}>{status}</Text>
-      <Text style={styles.speed}>Speed: {speed !== null ? `${speed} km/h` : '---'}</Text>
+      {/* Large title header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Nearby Parkings</Text>
+      </View>
+
+      <Text style={styles.statusText}>{status}{speed !== null ? ` · ${speed} km/h` : ''}</Text>
 
       {isNotDriving && (
         <TouchableOpacity
-          style={[styles.manualButton, manualLoading && styles.manualButtonDisabled]}
+          style={[styles.refreshButton, manualLoading && styles.refreshButtonLoading]}
           onPress={handleManualSearch}
           disabled={manualLoading}
+          activeOpacity={0.7}
         >
           {manualLoading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.tint} size="small" />
           ) : (
-            <Text style={styles.manualButtonText}>Search Nearby Parkings</Text>
+            <RefreshCw color={theme.tint} size={18} />
           )}
+          <Text style={styles.refreshButtonText}>
+            {manualLoading ? 'Searching…' : 'Search Nearby Parkings'}
+          </Text>
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        {parkings.map((parking, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.card}
-            onPress={() => setSelectedParking(parking)}
-          >
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName}>{parking.name}</Text>
-              <Text style={styles.cardAddress}>📍{parking.address}</Text>
-              <Text style={styles.cardDistance}>Distance: {(parking.distance / 1000).toFixed(1)} km</Text>
-              {(() => {
-                const rate = getTodayRate(parking.parking_rates ?? []);
-                return rate ? (
-                  <Text style={styles.cardRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
-                ) : null;
-              })()}
-              {parking.rate_policy_strategy === 'flexible' && (
-                <View style={styles.policyRow}>
-                  <View style={[styles.policyBadge, styles.policyFlexible]}>
-                    <Text style={styles.policyBadgeText}>No charges if you don't get to park</Text>
-                  </View>
+      {parkings.length > 0 && (
+        <Text style={styles.sectionLabel}>AVAILABLE NOW</Text>
+      )}
+
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {parkings.length > 0 && (
+          <View style={styles.groupCard}>
+            {parkings.map((parking, index) => {
+              const rate = getTodayRate(parking.parking_rates ?? []);
+              const isFlexible = parking.rate_policy_strategy === 'flexible';
+              const isStrict = parking.rate_policy_strategy === 'strict';
+
+              return (
+                <View key={index}>
+                  {index > 0 && <View style={styles.rowDivider} />}
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => setSelectedParking(parking)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowName}>{parking.name}</Text>
+                      <View style={styles.rowAddressLine}>
+                        <MapPin color={theme.textMuted} size={11} />
+                        <Text style={styles.rowAddress}>{parking.address}</Text>
+                      </View>
+                      <Text style={styles.rowDistance}>{(parking.distance / 1000).toFixed(1)} km away</Text>
+                      {(isFlexible || isStrict) && (
+                        <View style={[styles.policyBadge, isFlexible ? styles.policyFlexible : styles.policyStrict]}>
+                          <Text style={[styles.policyBadgeText, isFlexible ? styles.policyFlexibleText : styles.policyStrictText]}>
+                            {isFlexible ? 'Flexible' : 'Strict'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.rowRight}>
+                      {rate && <Text style={styles.rowRate}>{formatRate(rate.rate_per_hour_cents)}</Text>}
+                      <Text style={styles.rowChevron}>›</Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-              )}
-              {parking.rate_policy_strategy === 'strict' && (
-                <View style={styles.policyRow}>
-                  <View style={[styles.policyBadge, styles.policyStrict]}>
-                    <Text style={styles.policyBadgeText}>You'll be charged with one hour if you don't get there</Text>
-                  </View>
-                </View>
-              )}
-            </View>
-            <Text style={styles.cardArrow}>→</Text>
-          </TouchableOpacity>
-        ))}
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -180,114 +198,135 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       backgroundColor: theme.pageBackground,
       paddingTop: 60,
-      padding: 20,
+    },
+    header: {
+      paddingHorizontal: 20,
+      marginBottom: 4,
     },
     title: {
-      fontSize: 24,
+      fontSize: 32,
       fontWeight: 'bold',
-      marginBottom: 10,
-      textAlign: 'center',
       color: theme.text,
     },
-    status: {
-      fontSize: 16,
-      marginBottom: 4,
-      textAlign: 'center',
-      color: theme.text,
-    },
-    speed: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      marginBottom: 20,
-      textAlign: 'center',
-    },
-    manualButton: {
-      backgroundColor: '#007AFF',
-      padding: 14,
-      borderRadius: 10,
+    refreshButton: {
+      flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 16,
+      justifyContent: 'center',
+      gap: 8,
+      marginHorizontal: 20,
+      marginBottom: 14,
+      paddingVertical: 13,
+      borderRadius: 12,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.tint,
     },
-    manualButtonDisabled: {
+    refreshButtonLoading: {
       opacity: 0.6,
     },
-    manualButtonText: {
-      color: '#fff',
+    refreshButtonText: {
       fontSize: 15,
       fontWeight: '600',
+      color: theme.tint,
+    },
+    statusText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      paddingHorizontal: 20,
+      marginBottom: 14,
+    },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+      paddingHorizontal: 20,
+      marginBottom: 8,
     },
     list: {
       flex: 1,
     },
     listContent: {
-      gap: 12,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
     },
-    card: {
+    groupCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 3,
+      overflow: 'hidden',
+    },
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 12,
     },
-    cardInfo: {
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.divider,
+      marginLeft: 16,
+    },
+    rowInfo: {
       flex: 1,
     },
-    cardName: {
-      fontSize: 16,
-      fontWeight: 'bold',
+    rowName: {
+      fontSize: 15,
+      fontWeight: '600',
       color: theme.text,
       marginBottom: 4,
     },
-    cardAddress: {
-      fontSize: 13,
-      fontWeight: 'bold',
-      color: theme.textSecondary,
-    },
-    cardDistance: {
-      fontSize: 13,
-      fontWeight: 'bold',
-      color: theme.textSecondary,
-      marginBottom: 10,
-      marginTop: 10
-    },
-    cardRate: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#007AFF',
-      marginTop: 4,
-      marginBottom: 4,
-    },
-    policyRow: {
+    rowAddressLine: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 6,
-      gap: 8,
+      gap: 4,
+      marginBottom: 2,
+    },
+    rowAddress: {
+      fontSize: 13,
+      color: theme.textMuted,
+      flex: 1,
+    },
+    rowDistance: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginBottom: 6,
     },
     policyBadge: {
-      paddingHorizontal: 3,
+      alignSelf: 'flex-start',
+      paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 20,
     },
     policyFlexible: {
-      color: '#dcfce7',
+      backgroundColor: '#dcfce7',
     },
     policyStrict: {
-      color: '#fef9c3',
+      backgroundColor: '#fef3c7',
     },
     policyBadgeText: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
-      color: '#1a1a1a',
     },
-    cardArrow: {
-      fontSize: 18,
-      color: '#007AFF',
-      marginLeft: 12,
+    policyFlexibleText: {
+      color: '#15803d',
+    },
+    policyStrictText: {
+      color: '#92400e',
+    },
+    rowRight: {
+      alignItems: 'flex-end',
+      gap: 4,
+    },
+    rowRate: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.tint,
+    },
+    rowChevron: {
+      fontSize: 20,
+      color: theme.border,
+      lineHeight: 22,
     },
   });
 }

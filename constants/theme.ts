@@ -1,53 +1,47 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tint = '#6366f1';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-    pageBackground: '#f5f5f5',
-    card: '#ffffff',
-    textSecondary: '#444444',
-    textMuted: '#999999',
-    border: '#dddddd',
-    divider: '#eeeeee',
+    text: '#000000',
+    background: '#FFFFFF',
+    tint,
+    icon: '#8E8E93',
+    tabIconDefault: '#8E8E93',
+    tabIconSelected: tint,
+    pageBackground: '#F2F2F7',
+    card: '#FFFFFF',
+    textSecondary: '#3C3C43',
+    textMuted: '#8E8E93',
+    border: '#C6C6C8',
+    divider: '#C6C6C840',
+    tabBarBg: '#FFFFFF',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#FFFFFF',
+    background: '#000000',
+    tint,
+    icon: '#8E8E93',
+    tabIconDefault: '#8E8E93',
+    tabIconSelected: tint,
     pageBackground: '#000000',
     card: '#1C1C1E',
-    textSecondary: '#8E8E93',
-    textMuted: '#636366',
+    textSecondary: '#EBEBF599',
+    textMuted: '#8E8E93',
     border: '#38383A',
-    divider: '#2C2C2E',
+    divider: '#38383A',
+    tabBarBg: '#1C1C1E',
   },
 };
 
+export type AppTheme = typeof Colors.light;
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

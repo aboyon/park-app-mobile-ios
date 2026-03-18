@@ -7,6 +7,14 @@ import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
+const STATUS_DOT: Record<string, string> = {
+  pending:     '#6366f1',
+  in_progress: '#34c759',
+  completed:   '#34c759',
+  expired:     '#8E8E93',
+  cancelled:   '#ff3b30',
+};
+
 const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
   pending:        { bg: '#eff6ff', text: '#2563eb', label: 'Pending' },
   in_progress:    { bg: '#f0fdf4', text: '#15803d', label: 'In progress' },
@@ -64,7 +72,7 @@ export default function ReservationsScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.tint} />
       </View>
     );
   }
@@ -73,7 +81,7 @@ export default function ReservationsScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchReservations}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => fetchReservations()}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -85,43 +93,49 @@ export default function ReservationsScreen() {
       <Text style={styles.heading}>My Reservations</Text>
 
       {reservations.length === 0 ? (
-        <View style={styles.centered}>
+        <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No reservations yet</Text>
         </View>
       ) : (
-        <FlatList
-          data={reservations}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchReservations({ refresh: true })}
+        <>
+          <Text style={styles.sectionLabel}>RESERVATIONS</Text>
+          <View style={styles.groupCard}>
+            <FlatList
+              data={reservations}
+              keyExtractor={(item) => String(item.id)}
+              scrollEnabled={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => fetchReservations({ refresh: true })}
+                />
+              }
+              renderItem={({ item, index }) => {
+                const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
+                const dotColor = STATUS_DOT[item.status] ?? '#8E8E93';
+                return (
+                  <>
+                    {index > 0 && <View style={styles.rowDivider} />}
+                    <TouchableOpacity style={styles.row} onPress={() => setSelected(item)} activeOpacity={0.7}>
+                      <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
+                      <View style={styles.rowInfo}>
+                        <Text style={styles.rowName}>{item.parking.name}</Text>
+                        <Text style={styles.rowDate}>{formatDate(item.start_time)}</Text>
+                        <Text style={styles.rowPlate}>{item.vehicle.license_plate}</Text>
+                      </View>
+                      <View style={styles.rowRight}>
+                        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                          <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+                        </View>
+                        <Text style={styles.chevron}>›</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                );
+              }}
             />
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => setSelected(item)}>
-              <View style={styles.cardLeft}>
-                <Text style={styles.cardId}>{item.parking.name}</Text>
-                <Text style={styles.cardDate}>{formatDate(item.start_time)}</Text>
-                <Text style={styles.cardPlate}>{item.vehicle.license_plate}</Text>
-                {(() => {
-                  const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
-                  return (
-                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                      <Text style={[styles.badgeText, { color: badge.text }]}>
-                        {badge.label}
-                      </Text>
-                    </View>
-                  );
-                })()}
-              </View>
-              <View style={styles.cardRight}>
-                <Text style={styles.cardArrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+          </View>
+        </>
       )}
     </View>
   );
@@ -133,6 +147,7 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       backgroundColor: theme.pageBackground,
       paddingTop: 60,
+      paddingHorizontal: 20,
     },
     centered: {
       flex: 1,
@@ -141,68 +156,82 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     heading: {
-      fontSize: 24,
+      fontSize: 32,
       fontWeight: 'bold',
       color: theme.text,
-      paddingHorizontal: 20,
-      marginBottom: 16,
+      marginBottom: 4,
     },
-    list: {
-      paddingHorizontal: 20,
-      paddingBottom: 20,
-      gap: 12,
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+      marginBottom: 8,
+      marginTop: 16,
     },
-    card: {
+    groupCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 16,
+      overflow: 'hidden',
+    },
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      elevation: 2,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 12,
     },
-    cardLeft: {
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.divider,
+      marginLeft: 44,
+    },
+    statusDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    rowInfo: {
       flex: 1,
     },
-    cardId: {
+    rowName: {
       fontSize: 15,
       fontWeight: '600',
       color: theme.text,
     },
-    cardDate: {
+    rowDate: {
       fontSize: 13,
       color: theme.textMuted,
       marginTop: 2,
     },
-    cardPlate: {
+    rowPlate: {
       fontSize: 13,
-      color: theme.text,
+      color: theme.textSecondary,
       fontWeight: '500',
-      marginTop: 2,
+      marginTop: 1,
     },
-    cardRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+    rowRight: {
+      alignItems: 'flex-end',
+      gap: 4,
     },
     badge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: 20,
-      marginTop: 8,
     },
     badgeText: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
     },
-    cardArrow: {
+    chevron: {
       fontSize: 20,
       color: theme.border,
+      lineHeight: 22,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     emptyText: {
       fontSize: 16,
@@ -216,7 +245,7 @@ function makeStyles(theme: AppTheme) {
     retryButton: {
       paddingHorizontal: 24,
       paddingVertical: 10,
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       borderRadius: 8,
     },
     retryText: {

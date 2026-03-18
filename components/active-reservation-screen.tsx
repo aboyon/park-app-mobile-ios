@@ -184,7 +184,7 @@ export default function ActiveReservationScreen({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <Text style={styles.heading}>You parked at</Text>
+      <Text style={styles.heading}>You're parked at</Text>
 
       <View style={styles.card}>
         <Text style={styles.parkingName}>{reservation.parking.name}</Text>
@@ -198,7 +198,7 @@ export default function ActiveReservationScreen({
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Amount due</Text>
-          <Text style={styles.value}>${reservation.amount_due}</Text>
+          <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
         </View>
       </View>
 
@@ -206,7 +206,7 @@ export default function ActiveReservationScreen({
         <View style={styles.card}>
           <View style={styles.elapsed}>
             <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
-            <Text style={styles.elapsedLabel}>Your parking duration</Text>
+            <Text style={styles.elapsedLabel}>Parking duration</Text>
           </View>
           <View style={styles.divider} />
           {currentRate ? (
@@ -228,11 +228,12 @@ export default function ActiveReservationScreen({
         </View>
       ) : (
         keepMinutes != null && (
-          <View style={styles.countdown}>
-            <Text style={styles.countdownTimer}>{formatCountdown(remainingSeconds)}</Text>
-            <Text style={styles.countdownLabel}>
-              after that time this reservation will be cancelled
-            </Text>
+          <View style={styles.countdownCard}>
+            <View style={styles.countdownAccent} />
+            <View style={styles.countdownBody}>
+              <Text style={styles.countdownTimer}>{formatCountdown(remainingSeconds)}</Text>
+              <Text style={styles.countdownLabel}>to arrive — reservation cancels after this</Text>
+            </View>
           </View>
         )
       )}
@@ -244,7 +245,7 @@ export default function ActiveReservationScreen({
           {confirmingStart ? (
             <View style={styles.confirmBox}>
               <Text style={styles.confirmText}>
-                By confirming, your parking session will start immediately and charges will begin now. Are you ready to proceed?
+                Your parking session will start immediately and charges will begin now. Are you ready to proceed?
               </Text>
               <TouchableOpacity
                 style={[styles.startButton, starting && styles.buttonDisabled]}
@@ -299,27 +300,21 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     container: {
-      padding: 10,
+      paddingHorizontal: 20,
       paddingTop: 60,
       paddingBottom: 40,
     },
     heading: {
-      fontSize: 24,
+      fontSize: 32,
       fontWeight: 'bold',
       color: theme.text,
-      marginBottom: 24,
-      textAlign: 'center',
+      marginBottom: 16,
     },
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 10,
-      marginBottom: 24,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 3,
+      padding: 16,
+      marginBottom: 16,
     },
     parkingName: {
       fontSize: 20,
@@ -333,7 +328,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 16,
     },
     divider: {
-      height: 1,
+      height: StyleSheet.hairlineWidth,
       backgroundColor: theme.divider,
       marginBottom: 12,
     },
@@ -373,7 +368,7 @@ function makeStyles(theme: AppTheme) {
     costValue: {
       fontSize: 16,
       fontWeight: '700',
-      color: '#007AFF',
+      color: '#6366f1',
     },
     noRate: {
       fontSize: 13,
@@ -381,14 +376,29 @@ function makeStyles(theme: AppTheme) {
       textAlign: 'center',
       paddingVertical: 8,
     },
-    countdown: {
+    countdownCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    countdownAccent: {
+      width: 4,
+      backgroundColor: '#f59e0b',
+    },
+    countdownBody: {
+      flex: 1,
       alignItems: 'center',
-      marginBottom: 24,
+      paddingVertical: 20,
+      paddingHorizontal: 16,
     },
     countdownTimer: {
       fontSize: 52,
       fontWeight: 'bold',
-      color: theme.text,
+      color: '#f59e0b',
       textAlign: 'center',
       fontVariant: ['tabular-nums'],
     },
@@ -396,7 +406,7 @@ function makeStyles(theme: AppTheme) {
       fontSize: 13,
       color: theme.textMuted,
       textAlign: 'center',
-      marginTop: 4,
+      marginTop: 6,
     },
     error: {
       color: '#ff3b30',
@@ -405,7 +415,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 16,
     },
     startButton: {
-      backgroundColor: '#34c759',
+      backgroundColor: '#6366f1',
       padding: 16,
       borderRadius: 12,
       alignItems: 'center',
@@ -422,7 +432,7 @@ function makeStyles(theme: AppTheme) {
       padding: 16,
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: '#34c759',
+      borderColor: '#6366f1',
     },
     confirmText: {
       fontSize: 14,

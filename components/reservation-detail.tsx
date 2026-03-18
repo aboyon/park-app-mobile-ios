@@ -307,7 +307,7 @@ function makeStyles(theme: AppTheme) {
       paddingTop: 60,
     },
     backButton: { marginBottom: 20 },
-    backText: { fontSize: 16, color: '#007AFF' },
+    backText: { fontSize: 16, color: '#6366f1' },
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,

@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -7,13 +7,13 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
 import { MeProvider, useMe } from '@/context/me';
+import { ThemeProvider, useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function NotificationOverlay() {
   const { notificationAlert, clearNotificationAlert } = useMe();
   const theme = useAppTheme();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme();
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
@@ -78,22 +78,30 @@ function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean,
   });
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function AppStack() {
+  const { colorScheme } = useTheme();
 
   return (
-    <AuthProvider>
-      <MeProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="signup" />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-        <NotificationOverlay />
-      </MeProvider>
-    </AuthProvider>
+    <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+      </Stack>
+      <StatusBar style="auto" />
+    </NavThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <MeProvider>
+          <AppStack />
+          <NotificationOverlay />
+        </MeProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

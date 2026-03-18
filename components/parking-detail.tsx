@@ -14,12 +14,6 @@ type Vehicle = {
   is_default: boolean;
 };
 
-const VEHICLE_ICON: Record<Vehicle['vehicle_type'], string> = {
-  car: '🚗',
-  truck: '🚚',
-  motorcycle: '🏍️',
-};
-
 type VehicleRate = {
   rate_per_hour: number;
   rate_per_hour_cents: number;
@@ -180,24 +174,26 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       {parking.rate_policy_strategy === 'strict' &&
         Object.keys(parking.today_penalization_rates_cents ?? {}).length > 0 && (
           <View style={styles.warningCard}>
-            <Text style={styles.warningTitle}>
-              ⚠️ Charges if you don't arrive within {parking.keep_slot_open_minutes} min
-            </Text>
-            {parking.lock_slot_charge_policy === 'flat_rate' ? (
-              <Text style={styles.warningRate}>
-                {formatRate(Object.values(parking.today_penalization_rates_cents)[0].rate_per_hour_cents)}
+            <View style={styles.warningAccent} />
+            <View style={styles.warningBody}>
+              <Text style={styles.warningTitle}>
+                WARNING: Charges apply if you don't arrive within {parking.keep_slot_open_minutes} min
               </Text>
-            ) : (
-              Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
-                <View key={type} style={styles.rateRow}>
-                  <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
-                  <Text style={styles.warningVehicle}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                  <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
-                </View>
-              ))
-            )}
+              {parking.lock_slot_charge_policy === 'flat_rate' ? (
+                <Text style={styles.warningRate}>
+                  {formatRate(Object.values(parking.today_penalization_rates_cents)[0].rate_per_hour_cents)}
+                </Text>
+              ) : (
+                Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
+                  <View key={type} style={styles.rateRow}>
+                    <Text style={styles.warningVehicle}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                    <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         )}
 
@@ -230,7 +226,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
           <Text style={styles.vehiclePickerTitle}>Select your vehicle</Text>
 
           {vehiclesLoading ? (
-            <ActivityIndicator color="#007AFF" style={styles.vehiclesLoader} />
+            <ActivityIndicator color="#6366f1" style={styles.vehiclesLoader} />
           ) : vehiclesError !== '' ? (
             <Text style={styles.errorText}>{vehiclesError}</Text>
           ) : vehicles.length === 0 ? (
@@ -246,9 +242,6 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
                     style={styles.vehicleRow}
                     onPress={() => setSelectedVehicleId(vehicle.id)}
                   >
-                    <Text style={styles.vehicleRowIcon}>
-                      {VEHICLE_ICON[vehicle.vehicle_type]}
-                    </Text>
                     <View style={styles.vehicleRowInfo}>
                       <Text style={styles.vehicleRowPlate}>{vehicle.license_plate}</Text>
                       <Text style={styles.vehicleRowType}>
@@ -314,7 +307,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       )}
 
       <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
-        <Text style={styles.mapsButtonText}>Open in Apple Maps</Text>
+        <Text style={styles.mapsButtonText}>Open in Maps</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -336,7 +329,7 @@ function makeStyles(theme: AppTheme) {
     },
     backText: {
       fontSize: 16,
-      color: '#007AFF',
+      color: '#6366f1',
     },
     card: {
       backgroundColor: theme.card,
@@ -414,34 +407,43 @@ function makeStyles(theme: AppTheme) {
     ratePrice: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#007AFF',
+      color: '#6366f1',
     },
     warningCard: {
-      backgroundColor: '#fff7ed',
+      backgroundColor: theme.card,
       borderRadius: 12,
-      padding: 14,
       marginBottom: 16,
-      borderWidth: 1,
-      borderColor: '#fed7aa',
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    warningAccent: {
+      width: 4,
+      backgroundColor: '#f59e0b',
+    },
+    warningBody: {
+      flex: 1,
+      padding: 14,
     },
     warningTitle: {
       fontSize: 13,
       fontWeight: '600',
-      color: '#92400e',
+      color: theme.text,
       marginBottom: 8,
     },
     warningVehicle: {
       flex: 1,
       fontSize: 14,
-      color: '#92400e',
+      color: theme.textSecondary,
     },
     warningRate: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#92400e',
+      color: '#f59e0b',
     },
     reserveButton: {
-      backgroundColor: '#34c759',
+      backgroundColor: '#6366f1',
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',
@@ -557,7 +559,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 20,
     },
     addPaymentButton: {
-      backgroundColor: '#007AFF',
+      backgroundColor: '#6366f1',
       paddingHorizontal: 28,
       paddingVertical: 13,
       borderRadius: 12,
@@ -576,15 +578,16 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 12,
     },
     mapsButton: {
-      backgroundColor: '#007AFF',
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#6366f1',
     },
     mapsButtonText: {
-      color: '#fff',
+      color: '#6366f1',
       fontSize: 16,
-      fontWeight: 'bold',
+      fontWeight: '600',
     },
   });
 }

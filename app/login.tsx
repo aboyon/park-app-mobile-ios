@@ -1,4 +1,5 @@
 import { Redirect, useRouter } from 'expo-router';
+import { Lock, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -45,26 +46,44 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Park App</Text>
+      {/* Logo area */}
+      <View style={styles.logoArea}>
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoText}>P</Text>
+        </View>
+        <Text style={styles.title}>Park App</Text>
+        <Text style={styles.subtitle}>Find and reserve parking spots nearby</Text>
+      </View>
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
+      {/* Input card */}
+      <View style={styles.card}>
+        <View style={styles.inputRow}>
+          <Mail color={theme.textMuted} size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={theme.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
 
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <View style={styles.inputDivider} />
+
+        <View style={styles.inputRow}>
+          <Lock color={theme.textMuted} size={18} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={theme.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+      </View>
 
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
@@ -72,14 +91,14 @@ export default function LoginScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Login</Text>
+          <Text style={styles.buttonText}>Sign In</Text>
         )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.replace('/signup')}>
-          <Text style={styles.footerLink}>Sign up</Text>
+          <Text style={styles.footerLink}>Create account</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -92,39 +111,69 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.background,
-      padding: 30,
+      backgroundColor: theme.pageBackground,
+      paddingHorizontal: 28,
+    },
+    logoArea: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    logoCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: theme.tint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    logoText: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      color: '#fff',
     },
     title: {
-      fontSize: 28,
+      fontSize: 30,
       fontWeight: 'bold',
-      marginBottom: 40,
       color: theme.text,
-    },
-    label: {
-      alignSelf: 'flex-start',
-      fontSize: 13,
-      color: theme.textMuted,
       marginBottom: 6,
-      marginTop: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.textMuted,
+      textAlign: 'center',
+    },
+    card: {
+      width: '100%',
+      backgroundColor: theme.card,
+      borderRadius: 14,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    inputDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.divider,
+      marginLeft: 48,
     },
     input: {
-      width: '100%',
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 15,
+      flex: 1,
       fontSize: 16,
       color: theme.text,
     },
     button: {
       width: '100%',
-      backgroundColor: '#007AFF',
-      padding: 15,
-      borderRadius: 8,
+      backgroundColor: theme.tint,
+      padding: 16,
+      borderRadius: 12,
       alignItems: 'center',
-      marginTop: 10,
+      marginTop: 4,
     },
     buttonText: {
       color: '#fff',
@@ -134,10 +183,12 @@ function makeStyles(theme: AppTheme) {
     error: {
       color: '#ff3b30',
       marginBottom: 10,
+      fontSize: 14,
+      textAlign: 'center',
     },
     footer: {
       flexDirection: 'row',
-      marginTop: 24,
+      marginTop: 28,
     },
     footerText: {
       fontSize: 14,
@@ -145,7 +196,7 @@ function makeStyles(theme: AppTheme) {
     },
     footerLink: {
       fontSize: 14,
-      color: '#007AFF',
+      color: theme.tint,
       fontWeight: '600',
     },
   });

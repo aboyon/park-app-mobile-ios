@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { Car, ClipboardList, CreditCard, Home, User } from 'lucide-react-native';
 import { ActivityIndicator, View } from 'react-native';
 
 import ActiveReservationScreen from '@/components/active-reservation-screen';
@@ -36,41 +36,46 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.tint,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarStyle: {
+          backgroundColor: theme.tabBarBg,
+          borderTopColor: theme.divider,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Index',
-          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="reservations"
         options={{
           title: 'Reservations',
-          tabBarIcon: ({ color }) => <Ionicons name="receipt-outline" size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
           title: 'Vehicles',
-          tabBarIcon: ({ color }) => <Ionicons name="car-outline" size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => <Car color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="payments"
         options={{
           title: 'Payments',
-          tabBarIcon: ({ color }) => <Ionicons name="card-outline" size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
         }}
       />
       <Tabs.Screen name="explore" options={{ href: null }} />
