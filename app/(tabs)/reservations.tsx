@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ReservationDetail, { type Reservation } from '@/components/reservation-detail';
 import { API_BASE, apiHeaders } from '@/constants/config';
@@ -89,7 +89,16 @@ export default function ReservationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => fetchReservations({ refresh: true })}
+        />
+      }
+    >
       <Text style={styles.heading}>My Reservations</Text>
 
       {reservations.length === 0 ? (
@@ -100,44 +109,33 @@ export default function ReservationsScreen() {
         <>
           <Text style={styles.sectionLabel}>RESERVATIONS</Text>
           <View style={styles.groupCard}>
-            <FlatList
-              data={reservations}
-              keyExtractor={(item) => String(item.id)}
-              scrollEnabled={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={() => fetchReservations({ refresh: true })}
-                />
-              }
-              renderItem={({ item, index }) => {
-                const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
-                const dotColor = STATUS_DOT[item.status] ?? '#8E8E93';
-                return (
-                  <>
-                    {index > 0 && <View style={styles.rowDivider} />}
-                    <TouchableOpacity style={styles.row} onPress={() => setSelected(item)} activeOpacity={0.7}>
-                      <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
-                      <View style={styles.rowInfo}>
-                        <Text style={styles.rowName}>{item.parking.name}</Text>
-                        <Text style={styles.rowDate}>{formatDate(item.start_time)}</Text>
-                        <Text style={styles.rowPlate}>{item.vehicle.license_plate}</Text>
+            {reservations.map((item, index) => {
+              const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
+              const dotColor = STATUS_DOT[item.status] ?? '#8E8E93';
+              return (
+                <View key={item.id}>
+                  {index > 0 && <View style={styles.rowDivider} />}
+                  <TouchableOpacity style={styles.row} onPress={() => setSelected(item)} activeOpacity={0.7}>
+                    <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowName}>{item.parking.name}</Text>
+                      <Text style={styles.rowDate}>{formatDate(item.start_time)}</Text>
+                      <Text style={styles.rowPlate}>{item.vehicle.license_plate}</Text>
+                    </View>
+                    <View style={styles.rowRight}>
+                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                        <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
                       </View>
-                      <View style={styles.rowRight}>
-                        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                          <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-                        </View>
-                        <Text style={styles.chevron}>›</Text>
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                );
-              }}
-            />
+                      <Text style={styles.chevron}>›</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -146,8 +144,11 @@ function makeStyles(theme: AppTheme) {
     container: {
       flex: 1,
       backgroundColor: theme.pageBackground,
+    },
+    content: {
       paddingTop: 60,
       paddingHorizontal: 20,
+      paddingBottom: 40,
     },
     centered: {
       flex: 1,

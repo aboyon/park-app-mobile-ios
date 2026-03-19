@@ -1,4 +1,5 @@
 import { useFocusEffect } from 'expo-router';
+import { Star } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,11 +27,11 @@ type PaymentMethodType = 'credit_card' | 'debit';
 
 type CreditCardDetails = {
   card_holder: string;
-  card_id: string;
   last_four: string;
   expiration: string;
   payment_type_id: string;
-  issuer_id: string;
+  display_name: string;
+  payment_method_id: string;
 };
 
 type DebitDetails = {
@@ -193,8 +194,7 @@ export default function PaymentsScreen() {
         payload = {
           payment_method_render_type: 'credit_card',
           token: mpToken,
-          is_default: form.is_default,
-          payment_method_id: payment_method_id
+          is_default: form.is_default
         };
       } else {
         payload = {
@@ -492,11 +492,9 @@ export default function PaymentsScreen() {
                 <Text style={styles.cardIcon}>{methodIcon(item)}</Text>
                 <View style={styles.cardInfo}>
                   <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardNumber}>{methodTitle(item)}</Text>
+                    <Text style={styles.cardNumber}>{item.display_name}</Text>
                     {item.is_default && (
-                      <View style={styles.defaultBadge}>
-                        <Text style={styles.defaultBadgeText}>Default</Text>
-                      </View>
+                      <Star size={16} color="#f59e0b" fill="#f59e0b" />
                     )}
                   </View>
                   <Text style={styles.cardMeta}>{methodSubtitle(item)}</Text>
@@ -567,7 +565,7 @@ function makeStyles(theme: AppTheme) {
       elevation: 2,
     },
     cardDefault: {
-      borderColor: '#007AFF',
+      borderColor: '#f59e0b',
     },
     cardMain: { flexDirection: 'row', alignItems: 'center' },
     cardIcon: { fontSize: 28, marginRight: 14 },
@@ -576,8 +574,6 @@ function makeStyles(theme: AppTheme) {
     cardNumber: { fontSize: 15, fontWeight: '700', color: theme.text, letterSpacing: 0.5 },
     cardMeta: { fontSize: 13, color: theme.textMuted, marginTop: 3 },
     cardNetwork: { fontSize: 12, color: theme.textMuted, marginTop: 2, fontStyle: 'italic' },
-    defaultBadge: { backgroundColor: '#007AFF22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-    defaultBadgeText: { color: '#007AFF', fontSize: 11, fontWeight: '600' },
     cardActions: {
       flexDirection: 'row',
       justifyContent: 'flex-end',

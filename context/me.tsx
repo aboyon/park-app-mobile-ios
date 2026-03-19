@@ -42,7 +42,7 @@ type MeData = {
 };
 
 export type NotificationAlert = {
-  type: 'reservation_cancelled' | 'reservation_expired' | 'payment_completed';
+  type: 'reservation_cancelled' | 'reservation_expired' | 'payment_completed' | 'reservation_completed';
   message: string;
 };
 
@@ -76,7 +76,7 @@ const NOTIFICATION_MESSAGES: Record<string, { default: string; admin: string }> 
   reservation_expired: {
     default: 'Your reservation has expired.',
     admin: 'Your reservation has been expired by the parking.',
-  },
+  }
 };
 
 Notifications.setNotificationHandler({
@@ -159,7 +159,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
         : NOTIFICATION_MESSAGES[type].default;
       setNotificationAlert({ type, message });
       refresh();
-    } else if (type === 'notify_payment_completed') {
+    } else if (type === 'notify_payment_completed' || type === 'reservation_completed') {
       const parkingName = meRef.current?.active_reservation?.parking.name ?? 'the parking';
       setNotificationAlert({ type: 'payment_completed', message: `Thanks for parking at ${parkingName}!` });
       refresh();

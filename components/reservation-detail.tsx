@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -190,7 +191,8 @@ export default function ReservationDetail({
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
@@ -294,17 +296,25 @@ export default function ReservationDetail({
           theme={theme}
         />
       )}
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.pageBackground,
+    },
     container: {
       flex: 1,
       backgroundColor: theme.pageBackground,
-      padding: 10,
+    },
+    content: {
+      padding: 20,
       paddingTop: 60,
+      paddingBottom: 40,
     },
     backButton: { marginBottom: 20 },
     backText: { fontSize: 16, color: '#6366f1' },
