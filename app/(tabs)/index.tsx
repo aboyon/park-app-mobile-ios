@@ -14,6 +14,21 @@ type ParkingRate = {
   rate_per_hour_cents: number;
 };
 
+type Vehicle = {
+  id: number;
+  license_plate: string;
+  vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
+  is_default: boolean;
+};
+
+type VehicleRate = {
+  rate_per_hour: number;
+  rate_per_hour_cents: number;
+  wday: number;
+};
+
+type VehicleRates = Record<string, VehicleRate>;
+
 type Parking = {
   id: number;
   name: string;
@@ -25,8 +40,8 @@ type Parking = {
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
   today_penalization_rate: string | null;
-  today_rate_cents: number;
-  parking_rates: ParkingRate[];
+  today_rate_cents: VehicleRates;
+  today_penalization_rates_cents: VehicleRates;
 };
 
 function getTodayRate(rates: ParkingRate[]): ParkingRate | null {

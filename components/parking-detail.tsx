@@ -10,7 +10,7 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 type Vehicle = {
   id: number;
   license_plate: string;
-  vehicle_type: 'car' | 'truck' | 'motorcycle';
+  vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
   is_default: boolean;
 };
 

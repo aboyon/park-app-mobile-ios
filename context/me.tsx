@@ -11,6 +11,7 @@ export type Rate = {
   start_time: string;
   end_time: string;
   rate_per_hour: number;
+  vehicle_type: string;
 };
 
 export type ActiveReservation = {
@@ -25,13 +26,18 @@ export type ActiveReservation = {
     address: string;
     keep_slot_open_minutes?: number;
     rates?: Rate[];
+    today_rate_cents?: Record<string, { rate_per_hour: number; rate_per_hour_cents: number; wday: number }>;
+  };
+  vehicle?: {
+    vehicle_type: string;
+    license_plate: string;
   };
 };
 
 export type Vehicle = {
   id: number;
   license_plate: string;
-  vehicle_type: 'car' | 'truck' | 'motorcycle';
+  vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
   is_default: boolean;
 };
 

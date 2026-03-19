@@ -3,7 +3,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, Toucha
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
-import { type ActiveReservation, type Rate } from '@/context/me';
+import { type ActiveReservation } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 function getRemainingSeconds(startTime: string, keepMinutes: number): number {
@@ -35,28 +35,17 @@ function formatElapsed(seconds: number): string {
   return `${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }
 
-function getCurrentRate(rates: Rate[]): Rate | null {
-  const now = new Date();
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayName = days[now.getDay()];
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  return rates.find((rate) => {
-    if (rate.day_of_week !== todayName) return false;
-    const startMinutes =
-      parseInt(rate.start_time.slice(11, 13), 10) * 60 + parseInt(rate.start_time.slice(14, 16), 10);
-    const endMinutes =
-      parseInt(rate.end_time.slice(11, 13), 10) * 60 + parseInt(rate.end_time.slice(14, 16), 10);
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  }) ?? null;
+function formatRate(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}/h`;
 }
 
-function formatRate(cents: number): string {
-  return `€${(cents / 100).toFixed(2)}/h`;
+function billedHours(elapsedSeconds: number): number {
+  return Math.ceil(elapsedSeconds / 3600);
 }
 
 function calculateCost(elapsedSeconds: number, ratePerHour: number): string {
-  const cost = (elapsedSeconds / 3600) * (ratePerHour / 100);
-  return `€${cost.toFixed(2)}`;
+  const cost = billedHours(elapsedSeconds) * (ratePerHour / 100);
+  return `${cost.toFixed(2)}`;
 }
 
 export default function ActiveReservationScreen({
@@ -173,8 +162,11 @@ export default function ActiveReservationScreen({
     }
   };
 
-  const rates = reservation.parking.rates ?? [];
-  const currentRate = getCurrentRate(rates);
+  const vehicleType = reservation.vehicle?.vehicle_type;
+  const todayRates = reservation.parking.today_rate_cents ?? {};
+  const currentRate = vehicleType
+    ? todayRates[vehicleType]
+    : Object.values(todayRates)[0];
 
   return (
     <ScrollView
@@ -184,7 +176,9 @@ export default function ActiveReservationScreen({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
-      <Text style={styles.heading}>You're parked at</Text>
+      <Text style={styles.heading}>
+        {isInProgress ? "You're parked at" : 'You reserved a spot at'}
+      </Text>
 
       <View style={styles.card}>
         <Text style={styles.parkingName}>{reservation.parking.name}</Text>
@@ -197,13 +191,16 @@ export default function ActiveReservationScreen({
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Amount due</Text>
+          <Text style={styles.label}>Hourly rate</Text>
           <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
         </View>
       </View>
 
       {isInProgress ? (
         <View style={styles.card}>
+          <View style={styles.vehicleLicencePlate}>
+            <Text style={styles.licensePlate}>{reservation.vehicle.license_plate}</Text>
+          </View>
           <View style={styles.elapsed}>
             <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
             <Text style={styles.elapsedLabel}>Parking duration</Text>
@@ -212,13 +209,17 @@ export default function ActiveReservationScreen({
           {currentRate ? (
             <>
               <View style={styles.row}>
-                <Text style={styles.label}>Current rate</Text>
-                <Text style={styles.value}>{formatRate(currentRate.rate_per_hour)}</Text>
+                <Text style={styles.label}>Rate{vehicleType ? ` · ${vehicleType}` : ''}</Text>
+                <Text style={styles.value}>{formatRate(currentRate.rate_per_hour_cents)}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Estimated cost</Text>
+                <Text style={styles.label}>Billed hours</Text>
+                <Text style={styles.value}>{billedHours(elapsedSeconds)} h</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Total cost</Text>
                 <Text style={[styles.value, styles.costValue]}>
-                  {calculateCost(elapsedSeconds, currentRate.rate_per_hour)}
+                  ${calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)}
                 </Text>
               </View>
             </>
@@ -352,12 +353,31 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 12,
       marginBottom: 4,
     },
+    vehicleLicencePlate: {
+      alignItems: 'center',
+      paddingVertical: 12,
+      marginBottom: 4,
+    },
     elapsedTimer: {
       fontSize: 48,
       fontWeight: 'bold',
       color: theme.text,
       textAlign: 'center',
       fontVariant: ['tabular-nums'],
+    },
+    licensePlate: {
+      fontSize: 26,
+      fontWeight: 'bold',
+      color: theme.text,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+      backgroundColor: theme.pageBackground,
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      overflow: 'hidden',
     },
     elapsedLabel: {
       fontSize: 13,
