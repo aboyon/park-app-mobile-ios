@@ -57,7 +57,7 @@ const es = {
     foundParkings: 'Se encontraron %{count} estacionamientos cercanos',
     couldNotFetch: 'No se pudieron obtener los estacionamientos',
     notDriving: 'No estás conduciendo — toca actualizar para buscar',
-    searchNearby: 'Buscar estacionamientos cercanos',
+    searchNearby: 'Actualizar',
     searching: 'Buscando…',
     availableNow: 'DISPONIBLES AHORA',
     flexible: 'Flexible',

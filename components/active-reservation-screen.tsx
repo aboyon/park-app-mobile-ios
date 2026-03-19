@@ -361,7 +361,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 4,
     },
     elapsedTimer: {
-      fontSize: 48,
+      fontSize: 40,
       fontWeight: 'bold',
       color: theme.text,
       textAlign: 'center',

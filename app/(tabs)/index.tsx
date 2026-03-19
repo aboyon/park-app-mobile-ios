@@ -221,11 +221,11 @@ function makeStyles(theme: AppTheme) {
       paddingTop: 60,
     },
     header: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 15,
       marginBottom: 4,
     },
     title: {
-      fontSize: 32,
+      fontSize: 20,
       fontWeight: 'bold',
       color: theme.text,
     },
@@ -234,7 +234,7 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      marginHorizontal: 20,
+      marginHorizontal: 15,
       marginBottom: 14,
       paddingVertical: 13,
       borderRadius: 12,
@@ -253,7 +253,7 @@ function makeStyles(theme: AppTheme) {
     statusText: {
       fontSize: 13,
       color: theme.textMuted,
-      paddingHorizontal: 20,
+      paddingHorizontal: 15,
       marginBottom: 14,
     },
     sectionLabel: {
