@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { Star } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,9 +19,9 @@ import {
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 import { tokenizeCard } from '@/services/mercadopago';
-import { useMemo } from 'react';
 
 type PaymentMethodType = 'credit_card' | 'debit';
 
@@ -44,6 +44,7 @@ type PaymentMethod = {
   id: number;
   payment_method_render_type: PaymentMethodType;
   is_default: boolean;
+  display_name?: string;
   details: CreditCardDetails | DebitDetails;
 };
 
@@ -77,11 +78,6 @@ const BLANK_FORM: FormState = {
   account_holder: '',
   is_default: false,
 };
-
-const METHOD_TYPES: { value: PaymentMethodType; label: string; icon: string }[] = [
-  { value: 'credit_card', label: 'Credit Card', icon: '💳' },
-  { value: 'debit',       label: 'Debit',       icon: '🏦' },
-];
 
 function formatCardNumber(value: string) {
   return value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
@@ -122,8 +118,8 @@ function formatPaymentType(id: string): string {
 export default function PaymentsScreen() {
   const { token } = useAuth();
   const theme = useAppTheme();
-  // const styles = makeStyles(theme);
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useLocale();
 
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +146,7 @@ export default function PaymentsScreen() {
         if (!response.ok) throw new Error();
         setMethods(await response.json());
       } catch {
-        setFetchError('Could not load payment methods');
+        setFetchError(t('payments.couldNotLoad'));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -163,13 +159,13 @@ export default function PaymentsScreen() {
 
   const validate = (): string | null => {
     if (form.payment_method_render_type === 'credit_card') {
-      if (!form.card_id.trim()) return 'Card number is required';
-      if (!form.card_holder.trim()) return 'Cardholder name is required';
-      if (!form.expiration.trim()) return 'Expiration is required';
+      if (!form.card_id.trim()) return t('payments.cardNumberRequired');
+      if (!form.card_holder.trim()) return t('payments.cardHolderRequired');
+      if (!form.expiration.trim()) return t('payments.expirationRequired');
     } else {
-      if (!form.cbu.trim()) return 'CBU is required';
-      if (!form.bank_name.trim()) return 'Bank name is required';
-      if (!form.account_holder.trim()) return 'Account holder is required';
+      if (!form.cbu.trim()) return t('payments.cbuRequired');
+      if (!form.bank_name.trim()) return t('payments.bankNameRequired');
+      if (!form.account_holder.trim()) return t('payments.accountHolderRequired');
     }
     return null;
   };
@@ -213,14 +209,14 @@ export default function PaymentsScreen() {
       });
       if (!response.ok) {
         const data = await response.json();
-        setSaveError(data.message ?? 'Could not add payment method');
+        setSaveError(data.message ?? t('payments.couldNotAdd'));
         return;
       }
       setIsAdding(false);
       setForm(BLANK_FORM);
       fetchMethods();
     } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : 'Connection error');
+      setSaveError(e instanceof Error ? e.message : t('common.connectionError'));
     } finally {
       setSaving(false);
     }
@@ -243,12 +239,12 @@ export default function PaymentsScreen() {
 
   const handleDelete = (method: PaymentMethod) => {
     Alert.alert(
-      'Remove payment method',
-      `Remove ${methodTitle(method)}?`,
+      t('payments.removeTitle'),
+      t('payments.removeMessage', { title: methodTitle(method) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.remove'),
           style: 'destructive',
           onPress: async () => {
             setDeletingId(method.id);
@@ -282,20 +278,20 @@ export default function PaymentsScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <TouchableOpacity style={styles.backButton} onPress={closeForm}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>{t('common.back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.sectionHeader}>TYPE</Text>
+          <Text style={styles.sectionHeader}>{t('payments.sectionType')}</Text>
           <View style={styles.groupCard}>
-            {METHOD_TYPES.map(({ value, label, icon }, index) => (
+            {(['credit_card', 'debit'] as PaymentMethodType[]).map((value, index) => (
               <View key={value}>
                 {index > 0 && <View style={styles.groupDivider} />}
                 <TouchableOpacity
                   style={styles.typeRow}
                   onPress={() => setForm({ ...BLANK_FORM, payment_method_render_type: value })}
                 >
-                  <Text style={styles.typeIcon}>{icon}</Text>
-                  <Text style={styles.typeLabel}>{label}</Text>
+                  <Text style={styles.typeIcon}>{value === 'credit_card' ? '💳' : '🏦'}</Text>
+                  <Text style={styles.typeLabel}>{t(`payments.types.${value}`)}</Text>
                   {form.payment_method_render_type === value && (
                     <Text style={styles.typeCheck}>✓</Text>
                   )}
@@ -306,15 +302,15 @@ export default function PaymentsScreen() {
 
           {isCreditCard ? (
             <>
-              <Text style={styles.sectionHeader}>CARD DETAILS</Text>
+              <Text style={styles.sectionHeader}>{t('payments.sectionCardDetails')}</Text>
               <View style={styles.groupCard}>
                 <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>Card number</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.cardNumber')}</Text>
                   <TextInput
                     style={styles.stackedInput}
                     value={form.card_id}
                     onChangeText={(v) => setForm({ ...form, card_id: formatCardNumber(v) })}
-                    placeholder="0000 0000 0000 0000"
+                    placeholder={t('payments.cardNumberPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="number-pad"
                     maxLength={19}
@@ -322,24 +318,24 @@ export default function PaymentsScreen() {
                 </View>
                 <View style={styles.groupDivider} />
                 <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>Cardholder name</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.cardHolder')}</Text>
                   <TextInput
                     style={styles.stackedInput}
                     value={form.card_holder}
                     onChangeText={(v) => setForm({ ...form, card_holder: v })}
-                    placeholder="Name on card"
+                    placeholder={t('payments.cardHolderPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     autoCapitalize="words"
                   />
                 </View>
                 <View style={styles.groupDivider} />
                 <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>Expiration</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.expiration')}</Text>
                   <TextInput
                     style={styles.stackedInput}
                     value={form.expiration}
                     onChangeText={(v) => setForm({ ...form, expiration: v })}
-                    placeholder="MM/YYYY"
+                    placeholder={t('payments.expirationPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="numbers-and-punctuation"
                     maxLength={7}
@@ -347,12 +343,12 @@ export default function PaymentsScreen() {
                 </View>
                 <View style={styles.groupDivider} />
                 <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>CVV</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.cvv')}</Text>
                   <TextInput
                     style={styles.stackedInput}
                     value={form.cvv}
                     onChangeText={(v) => setForm({ ...form, cvv: v })}
-                    placeholder="e.g. 123"
+                    placeholder={t('payments.cvvPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="number-pad"
                   />
@@ -361,17 +357,17 @@ export default function PaymentsScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.sectionHeader}>ACCOUNT DETAILS</Text>
+              <Text style={styles.sectionHeader}>{t('payments.sectionAccountDetails')}</Text>
               <View style={styles.groupCard}>
               <View style={styles.stackedField}>
                 <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>CBU</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.cbu')}</Text>
                 </View>
                 <TextInput
                   style={styles.stackedInput}
                   value={form.cbu}
                   onChangeText={(v) => setForm((prev) => ({ ...prev, cbu: v.replace(/\D/g, '') }))}
-                  placeholder="22-digit CBU"
+                  placeholder={t('payments.cbuPlaceholder')}
                   placeholderTextColor={theme.textMuted}
                   keyboardType="number-pad"
                   maxLength={22}
@@ -380,13 +376,13 @@ export default function PaymentsScreen() {
               <View style={styles.groupDivider} />
               <View style={styles.stackedField}>
                 <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>Bank name</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.bankName')}</Text>
                 </View>
                 <TextInput
                   style={styles.stackedInput}
                   value={form.bank_name}
                   onChangeText={(v) => setForm((prev) => ({ ...prev, bank_name: v }))}
-                  placeholder="e.g. Banco Galicia"
+                  placeholder={t('payments.bankNamePlaceholder')}
                   placeholderTextColor={theme.textMuted}
                   autoCapitalize="words"
                 />
@@ -394,14 +390,14 @@ export default function PaymentsScreen() {
               <View style={styles.groupDivider} />
               <View style={styles.stackedField}>
                 <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>Account holder</Text>
+                  <Text style={styles.stackedLabel}>{t('payments.accountHolder')}</Text>
                 </View>
                 <TextInput
                   key="account_holder_input"
                   style={styles.stackedInput}
                   value={form.account_holder}
                   onChangeText={(v) => setForm((prev) => ({ ...prev, account_holder: v }))}
-                  placeholder="Full name"
+                  placeholder={t('payments.accountHolderPlaceholder')}
                   placeholderTextColor={theme.textMuted}
                   autoCapitalize="words"
                 />
@@ -412,14 +408,14 @@ export default function PaymentsScreen() {
 
           <TextInput style={{ height: 0, opacity: 0 }} />
 
-          <Text style={styles.sectionHeader}>OPTIONS</Text>
+          <Text style={styles.sectionHeader}>{t('payments.sectionOptions')}</Text>
           <View style={styles.groupCard}>
             <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Set as default</Text>
+              <Text style={styles.fieldLabel}>{t('payments.setAsDefault')}</Text>
               <Switch
                 value={form.is_default}
                 onValueChange={(v) => setForm({ ...form, is_default: v })}
-                trackColor={{ false: theme.border, true: '#007AFF' }}
+                trackColor={{ false: theme.border, true: theme.tint }}
                 thumbColor="#fff"
               />
             </View>
@@ -435,7 +431,7 @@ export default function PaymentsScreen() {
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Add Payment Method</Text>
+              <Text style={styles.submitButtonText}>{t('payments.addPaymentMethod')}</Text>
             )}
           </TouchableOpacity>
         </ScrollView>
@@ -444,7 +440,7 @@ export default function PaymentsScreen() {
   }
 
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator size="large" color="#007AFF" /></View>;
+    return <View style={styles.centered}><ActivityIndicator size="large" color={theme.tint} /></View>;
   }
 
   if (fetchError) {
@@ -452,7 +448,7 @@ export default function PaymentsScreen() {
       <View style={styles.centered}>
         <Text style={styles.errorText}>{fetchError}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchMethods()}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -461,18 +457,18 @@ export default function PaymentsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Payment Methods</Text>
+        <Text style={styles.heading}>{t('payments.title')}</Text>
       </View>
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => { setForm(BLANK_FORM); setSaveError(''); setIsAdding(true); }}
       >
-        <Text style={styles.addButtonText}>+ Add Payment Method</Text>
+        <Text style={styles.addButtonText}>{t('payments.addButton')}</Text>
       </TouchableOpacity>
 
       {methods.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>No payment methods yet</Text>
+          <Text style={styles.emptyText}>{t('payments.empty')}</Text>
         </View>
       ) : (
         <FlatList
@@ -512,9 +508,9 @@ export default function PaymentsScreen() {
                     disabled={settingDefaultId === item.id}
                   >
                     {settingDefaultId === item.id ? (
-                      <ActivityIndicator size="small" color="#007AFF" />
+                      <ActivityIndicator size="small" color={theme.tint} />
                     ) : (
-                      <Text style={styles.setDefaultText}>Set default</Text>
+                      <Text style={styles.setDefaultText}>{t('payments.setDefault')}</Text>
                     )}
                   </TouchableOpacity>
                 )}
@@ -526,7 +522,7 @@ export default function PaymentsScreen() {
                   {deletingId === item.id ? (
                     <ActivityIndicator size="small" color="#ff3b30" />
                   ) : (
-                    <Text style={styles.deleteText}>Remove</Text>
+                    <Text style={styles.deleteText}>{t('common.remove')}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -547,7 +543,7 @@ function makeStyles(theme: AppTheme) {
     header: { paddingHorizontal: 20, marginBottom: 12 },
     heading: { fontSize: 24, fontWeight: 'bold', color: theme.text },
     addButton: {
-      backgroundColor: '#007AFF', marginHorizontal: 20, marginBottom: 20,
+      backgroundColor: theme.tint, marginHorizontal: 20, marginBottom: 20,
       paddingVertical: 13, borderRadius: 12, alignItems: 'center',
     },
     addButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
@@ -583,21 +579,20 @@ function makeStyles(theme: AppTheme) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.divider,
     },
-    setDefaultButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#007AFF' },
-    setDefaultText: { color: '#007AFF', fontSize: 13, fontWeight: '600' },
+    setDefaultButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.tint },
+    setDefaultText: { color: theme.tint, fontSize: 13, fontWeight: '600' },
     deleteButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#ff3b30' },
     deleteText: { color: '#ff3b30', fontSize: 13, fontWeight: '600' },
     emptyText: { fontSize: 16, color: theme.textMuted, marginBottom: 16 },
     formContent: { paddingTop: 60, paddingBottom: 40 },
     backButton: { marginBottom: 12, paddingHorizontal: 20 },
-    backText: { fontSize: 16, color: '#007AFF' },
+    backText: { fontSize: 16, color: theme.tint },
     sectionHeader: {
       fontSize: 12, fontWeight: '600', color: theme.textMuted,
       letterSpacing: 0.6, marginTop: 24, marginBottom: 8, paddingHorizontal: 20,
     },
     groupCard: {
       backgroundColor: theme.card, borderRadius: 12, marginHorizontal: 20,
-      // overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     },
@@ -605,7 +600,7 @@ function makeStyles(theme: AppTheme) {
     typeRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, minHeight: 52 },
     typeIcon: { fontSize: 20, marginRight: 12 },
     typeLabel: { fontSize: 15, color: theme.text, flex: 1 },
-    typeCheck: { fontSize: 16, color: '#007AFF', fontWeight: '600' },
+    typeCheck: { fontSize: 16, color: theme.tint, fontWeight: '600' },
     fieldRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 14, minHeight: 52,
@@ -615,10 +610,10 @@ function makeStyles(theme: AppTheme) {
     stackedLabel: { fontSize: 12, fontWeight: '600', color: theme.textMuted, marginBottom: 6 },
     stackedInput: { fontSize: 16, color: theme.text },
     errorText: { color: '#ff3b30', fontSize: 14, textAlign: 'center', marginVertical: 8, paddingHorizontal: 20 },
-    submitButton: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 20, marginHorizontal: 20 },
+    submitButton: { backgroundColor: theme.tint, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 20, marginHorizontal: 20 },
     submitButtonDisabled: { opacity: 0.5 },
     submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    retryButton: { paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#007AFF', borderRadius: 8, marginTop: 8 },
+    retryButton: { paddingHorizontal: 24, paddingVertical: 10, backgroundColor: theme.tint, borderRadius: 8, marginTop: 8 },
     retryText: { color: '#fff', fontWeight: '600' },
   });
 }

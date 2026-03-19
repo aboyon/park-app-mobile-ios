@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
+import { LocaleProvider, useLocale } from '@/context/locale';
 import { MeProvider, useMe } from '@/context/me';
 import { ThemeProvider, useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -14,6 +15,7 @@ function NotificationOverlay() {
   const { notificationAlert, clearNotificationAlert } = useMe();
   const theme = useAppTheme();
   const { colorScheme } = useTheme();
+  const { t } = useLocale();
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
@@ -29,11 +31,24 @@ function NotificationOverlay() {
   const isPayment = type === 'payment_completed';
   const styles = makeOverlayStyles(theme, isDark, isExpired, isPayment);
 
+  let message: string;
+  if (isPayment) {
+    message = t('notifications.thankYouParking', { parking: notificationAlert.parkingName ?? 'the parking' });
+  } else if (type === 'reservation_cancelled') {
+    message = notificationAlert.triggeredBy === 'admin'
+      ? t('notifications.reservationCancelledByAdmin')
+      : t('notifications.reservationCancelled');
+  } else {
+    message = notificationAlert.triggeredBy === 'admin'
+      ? t('notifications.reservationExpiredByAdmin')
+      : t('notifications.reservationExpired');
+  }
+
   return (
     <View style={styles.overlay}>
       <View style={styles.alertBox}>
         <Text style={styles.alertIcon}>{isPayment ? '✅' : isExpired ? '⏰' : '✕'}</Text>
-        <Text style={styles.alertMessage}>{notificationAlert.message}</Text>
+        <Text style={styles.alertMessage}>{message}</Text>
       </View>
     </View>
   );
@@ -96,12 +111,14 @@ function AppStack() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <MeProvider>
-          <AppStack />
-          <NotificationOverlay />
-        </MeProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <MeProvider>
+            <AppStack />
+            <NotificationOverlay />
+          </MeProvider>
+        </AuthProvider>
+      </LocaleProvider>
     </ThemeProvider>
   );
 }

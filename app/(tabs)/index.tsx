@@ -6,6 +6,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import ParkingDetail from '@/components/parking-detail';
 import { API_BASE, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
@@ -39,9 +40,11 @@ type Parking = {
   available_slots: number;
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
+  lock_slot_charge_policy?: string;
   today_penalization_rate: string | null;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
+  parking_rates?: ParkingRate[];
 };
 
 function getTodayRate(rates: ParkingRate[]): ParkingRate | null {
@@ -58,8 +61,9 @@ export default function IndexScreen() {
   const { me } = useMe();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
   const [speed, setSpeed] = useState<number | null>(null);
-  const [status, setStatus] = useState('Waiting for location...');
+  const [status, setStatus] = useState('');
   const [parkings, setParkings] = useState<Parking[]>([]);
   const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
   const [manualLoading, setManualLoading] = useState(false);
@@ -78,9 +82,9 @@ export default function IndexScreen() {
       const response = await fetch(url, { headers: apiHeaders(token!) });
       const data = await response.json();
       setParkings(data);
-      setStatus(`Found ${data.length} parkings nearby`);
+      setStatus(t('home.foundParkings', { count: data.length }));
     } catch {
-      setStatus('Could not fetch parkings');
+      setStatus(t('home.couldNotFetch'));
     }
   };
 
@@ -97,9 +101,11 @@ export default function IndexScreen() {
     const startTracking = async () => {
       const { status: permStatus } = await Location.requestForegroundPermissionsAsync();
       if (permStatus !== 'granted') {
-        setStatus('Location permission denied');
+        setStatus(t('home.waitingForLocation'));
         return;
       }
+
+      setStatus(t('home.waitingForLocation'));
 
       subscriber = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
@@ -113,7 +119,7 @@ export default function IndexScreen() {
           if (speedKmh > MIN_DRIVING_SPEED_KMH) {
             fetchNearbyParkings(latitude, longitude);
           } else {
-            setStatus('Not driving — tap refresh to search');
+            setStatus(t('home.notDriving'));
             setParkings([]);
           }
         }
@@ -134,7 +140,7 @@ export default function IndexScreen() {
     <View style={styles.container}>
       {/* Large title header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Nearby Parkings</Text>
+        <Text style={styles.title}>{t('home.title')}</Text>
       </View>
 
       <Text style={styles.statusText}>{status}{speed !== null ? ` · ${speed} km/h` : ''}</Text>
@@ -152,13 +158,13 @@ export default function IndexScreen() {
             <RefreshCw color={theme.tint} size={18} />
           )}
           <Text style={styles.refreshButtonText}>
-            {manualLoading ? 'Searching…' : 'Search Nearby Parkings'}
+            {manualLoading ? t('home.searching') : t('home.searchNearby')}
           </Text>
         </TouchableOpacity>
       )}
 
       {parkings.length > 0 && (
-        <Text style={styles.sectionLabel}>AVAILABLE NOW</Text>
+        <Text style={styles.sectionLabel}>{t('home.availableNow')}</Text>
       )}
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
@@ -183,11 +189,11 @@ export default function IndexScreen() {
                         <MapPin color={theme.textMuted} size={11} />
                         <Text style={styles.rowAddress}>{parking.address}</Text>
                       </View>
-                      <Text style={styles.rowDistance}>{(parking.distance / 1000).toFixed(1)} km away</Text>
+                      <Text style={styles.rowDistance}>{t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}</Text>
                       {(isFlexible || isStrict) && (
                         <View style={[styles.policyBadge, isFlexible ? styles.policyFlexible : styles.policyStrict]}>
                           <Text style={[styles.policyBadgeText, isFlexible ? styles.policyFlexibleText : styles.policyStrictText]}>
-                            {isFlexible ? 'Flexible' : 'Strict'}
+                            {isFlexible ? t('home.flexible') : t('home.strict')}
                           </Text>
                         </View>
                       )}

@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import ActiveReservationScreen from '@/components/active-reservation-screen';
 import RequireVehicleScreen from '@/components/require-vehicle-screen';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
@@ -12,6 +13,7 @@ export default function TabLayout() {
   const { token } = useAuth();
   const { me, loading, error, refresh } = useMe();
   const theme = useAppTheme();
+  const { t } = useLocale();
 
   if (!token) return <Redirect href="/login" />;
 
@@ -46,35 +48,35 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="reservations"
         options={{
-          title: 'Reservations',
+          title: t('tabs.reservations'),
           tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: 'Vehicles',
+          title: t('tabs.vehicles'),
           tabBarIcon: ({ color, size }) => <Car color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="payments"
         options={{
-          title: 'Payments',
+          title: t('tabs.payments'),
           tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
         }}
       />

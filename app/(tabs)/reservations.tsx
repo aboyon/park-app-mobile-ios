@@ -5,6 +5,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, Toucha
 import ReservationDetail, { type Reservation } from '@/components/reservation-detail';
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const STATUS_DOT: Record<string, string> = {
@@ -15,12 +16,12 @@ const STATUS_DOT: Record<string, string> = {
   cancelled:   '#ff3b30',
 };
 
-const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  pending:        { bg: '#eff6ff', text: '#2563eb', label: 'Pending' },
-  in_progress:    { bg: '#f0fdf4', text: '#15803d', label: 'In progress' },
-  completed:      { bg: '#f0fdf4', text: '#15803d', label: 'Completed' },
-  expired:        { bg: '#f5f5f5', text: '#6b7280', label: 'Expired' },
-  cancelled:      { bg: '#fff1f0', text: '#ff3b30', label: 'Cancelled' },
+const STATUS_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
+  pending:     { bg: '#eff6ff', text: '#2563eb' },
+  in_progress: { bg: '#f0fdf4', text: '#15803d' },
+  completed:   { bg: '#f0fdf4', text: '#15803d' },
+  expired:     { bg: '#f5f5f5', text: '#6b7280' },
+  cancelled:   { bg: '#fff1f0', text: '#ff3b30' },
 };
 
 function formatDate(iso: string) {
@@ -34,6 +35,7 @@ export default function ReservationsScreen() {
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +54,7 @@ export default function ReservationsScreen() {
       const data = await response.json();
       setReservations(data);
     } catch {
-      setError('Could not load reservations');
+      setError(t('reservations.couldNotLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,7 +84,7 @@ export default function ReservationsScreen() {
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchReservations()}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -99,19 +101,20 @@ export default function ReservationsScreen() {
         />
       }
     >
-      <Text style={styles.heading}>My Reservations</Text>
+      <Text style={styles.heading}>{t('reservations.title')}</Text>
 
       {reservations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No reservations yet</Text>
+          <Text style={styles.emptyText}>{t('reservations.empty')}</Text>
         </View>
       ) : (
         <>
-          <Text style={styles.sectionLabel}>RESERVATIONS</Text>
+          <Text style={styles.sectionLabel}>{t('reservations.sectionLabel')}</Text>
           <View style={styles.groupCard}>
             {reservations.map((item, index) => {
-              const badge = STATUS_BADGE[item.status] ?? STATUS_BADGE.expired;
+              const colors = STATUS_BADGE_COLORS[item.status] ?? STATUS_BADGE_COLORS.expired;
               const dotColor = STATUS_DOT[item.status] ?? '#8E8E93';
+              const statusLabel = t(`reservations.status.${item.status}`, { defaultValue: item.status });
               return (
                 <View key={item.id}>
                   {index > 0 && <View style={styles.rowDivider} />}
@@ -123,8 +126,8 @@ export default function ReservationsScreen() {
                       <Text style={styles.rowPlate}>{item.vehicle.license_plate}</Text>
                     </View>
                     <View style={styles.rowRight}>
-                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+                      <View style={[styles.badge, { backgroundColor: colors.bg }]}>
+                        <Text style={[styles.badgeText, { color: colors.text }]}>{statusLabel}</Text>
                       </View>
                       <Text style={styles.chevron}>›</Text>
                     </View>

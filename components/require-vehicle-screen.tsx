@@ -14,20 +14,22 @@ import {
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type VehicleType = 'car' | 'truck' | 'motorcycle';
 
-const VEHICLE_TYPES: { value: VehicleType; label: string; icon: string }[] = [
-  { value: 'car', label: 'Car', icon: '🚗' },
-  { value: 'truck', label: 'Truck', icon: '🚚' },
-  { value: 'motorcycle', label: 'Motorcycle', icon: '🏍️' },
+const VEHICLE_TYPES: { value: VehicleType; icon: string }[] = [
+  { value: 'car', icon: '🚗' },
+  { value: 'truck', icon: '🚚' },
+  { value: 'motorcycle', icon: '🏍️' },
 ];
 
 export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => Promise<void> }) {
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
 
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
@@ -37,7 +39,7 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
 
   const handleSubmit = async () => {
     if (!licensePlate.trim()) {
-      setError('License plate is required');
+      setError(t('vehicles.licensePlateRequired'));
       return;
     }
     setSaving(true);
@@ -52,12 +54,12 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
       });
       if (!response.ok) {
         const data = await response.json();
-        setError(data.message ?? 'Could not save vehicle');
+        setError(data.message ?? t('vehicles.couldNotSave'));
         return;
       }
       await onDismiss();
     } catch {
-      setError('Connection error');
+      setError(t('common.connectionError'));
     } finally {
       setSaving(false);
     }
@@ -73,39 +75,37 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.heading}>Add a Vehicle</Text>
-        <Text style={styles.subheading}>
-          You need at least one vehicle registered before you can use the app.
-        </Text>
+        <Text style={styles.heading}>{t('requireVehicle.title')}</Text>
+        <Text style={styles.subheading}>{t('requireVehicle.subtitle')}</Text>
 
-        <Text style={styles.sectionHeader}>DETAILS</Text>
+        <Text style={styles.sectionHeader}>{t('vehicles.sectionDetails')}</Text>
         <View style={styles.groupCard}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>License Plate</Text>
+            <Text style={styles.fieldLabel}>{t('vehicles.licensePlate')}</Text>
             <TextInput
               style={styles.fieldInput}
               value={licensePlate}
               onChangeText={(v) => setLicensePlate(v.toUpperCase())}
-              placeholder="e.g. AB-12-CD"
+              placeholder={t('vehicles.licensePlatePlaceholder')}
               placeholderTextColor={theme.textMuted}
               autoCapitalize="characters"
             />
           </View>
           <View style={styles.groupDivider} />
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Set as default</Text>
+            <Text style={styles.fieldLabel}>{t('vehicles.setAsDefault')}</Text>
             <Switch
               value={isDefault}
               onValueChange={setIsDefault}
-              trackColor={{ false: theme.border, true: '#007AFF' }}
+              trackColor={{ false: theme.border, true: theme.tint }}
               thumbColor="#fff"
             />
           </View>
         </View>
 
-        <Text style={styles.sectionHeader}>TYPE</Text>
+        <Text style={styles.sectionHeader}>{t('vehicles.sectionType')}</Text>
         <View style={styles.groupCard}>
-          {VEHICLE_TYPES.map(({ value, label, icon }, index) => (
+          {VEHICLE_TYPES.map(({ value, icon }, index) => (
             <View key={value}>
               {index > 0 && <View style={styles.groupDivider} />}
               <TouchableOpacity
@@ -113,7 +113,7 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
                 onPress={() => setVehicleType(value)}
               >
                 <Text style={styles.typeIcon}>{icon}</Text>
-                <Text style={styles.typeLabel}>{label}</Text>
+                <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
                 {vehicleType === value && <Text style={styles.typeCheck}>✓</Text>}
               </TouchableOpacity>
             </View>
@@ -130,7 +130,7 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Add Vehicle</Text>
+            <Text style={styles.submitButtonText}>{t('requireVehicle.addVehicle')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -224,7 +224,7 @@ function makeStyles(theme: AppTheme) {
     },
     typeCheck: {
       fontSize: 16,
-      color: '#007AFF',
+      color: theme.tint,
       fontWeight: '600',
     },
     errorText: {
@@ -235,7 +235,7 @@ function makeStyles(theme: AppTheme) {
       marginHorizontal: 20,
     },
     submitButton: {
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',

@@ -17,6 +17,7 @@ import { Picker } from '@react-native-picker/picker';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale, type SupportedLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
 import { type ThemePreference, useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -35,10 +36,15 @@ type UserData = {
   notifiable_distance: number;
 };
 
-const THEME_OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
-  { value: 'system', label: 'System', Icon: Smartphone },
-  { value: 'light',  label: 'Light',  Icon: Sun },
-  { value: 'dark',   label: 'Dark',   Icon: Moon },
+const THEME_OPTIONS: { value: ThemePreference; labelKey: string; Icon: typeof Sun }[] = [
+  { value: 'system', labelKey: 'profile.theme.system', Icon: Smartphone },
+  { value: 'light',  labelKey: 'profile.theme.light',  Icon: Sun },
+  { value: 'dark',   labelKey: 'profile.theme.dark',   Icon: Moon },
+];
+
+const LANGUAGE_OPTIONS: { value: SupportedLocale }[] = [
+  { value: 'en' },
+  { value: 'es' },
 ];
 
 export default function ProfileScreen() {
@@ -46,6 +52,7 @@ export default function ProfileScreen() {
   const { refresh } = useMe();
   const theme = useAppTheme();
   const { themePreference, setThemePreference } = useTheme();
+  const { t, locale, setLocale } = useLocale();
   const styles = makeStyles(theme);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +75,7 @@ export default function ProfileScreen() {
       setName(data.name);
       setNotifiableDistance(data.notifiable_distance);
     } catch {
-      setFetchError('Could not load profile');
+      setFetchError(t('profile.couldNotLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -102,7 +109,7 @@ export default function ProfileScreen() {
 
       if (!response.ok) {
         const data = await response.json();
-        setSaveError(data.message ?? 'Could not save changes');
+        setSaveError(data.message ?? t('profile.couldNotSave'));
         return;
       }
 
@@ -111,7 +118,7 @@ export default function ProfileScreen() {
       setSaveSuccess(true);
       refresh();
     } catch {
-      setSaveError('Connection error');
+      setSaveError(t('common.connectionError'));
     } finally {
       setSaving(false);
     }
@@ -162,21 +169,21 @@ export default function ProfileScreen() {
         </View>
 
         {/* Profile section */}
-        <Text style={styles.sectionLabel}>PROFILE</Text>
+        <Text style={styles.sectionLabel}>{t('profile.sectionLabel')}</Text>
         <View style={styles.card}>
-          <Text style={styles.label}>Name</Text>
+          <Text style={styles.label}>{t('profile.name')}</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={(v) => { setName(v); setSaveSuccess(false); }}
-            placeholder="Your name"
+            placeholder={t('profile.namePlaceholder')}
             placeholderTextColor={theme.textMuted}
             autoCapitalize="words"
           />
 
           <View style={styles.fieldDivider} />
 
-          <Text style={styles.label}>Notification distance</Text>
+          <Text style={styles.label}>{t('profile.notificationDistance')}</Text>
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={notifiableDistance}
@@ -192,7 +199,7 @@ export default function ProfileScreen() {
         </View>
 
         {saveError !== '' && <Text style={styles.errorText}>{saveError}</Text>}
-        {saveSuccess && <Text style={styles.successText}>Changes saved</Text>}
+        {saveSuccess && <Text style={styles.successText}>{t('profile.changesSaved')}</Text>}
 
         <TouchableOpacity
           style={[styles.saveButton, (!isDirty || saving) && styles.saveButtonDisabled]}
@@ -202,16 +209,16 @@ export default function ProfileScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Text style={styles.saveButtonText}>{t('profile.saveChanges')}</Text>
           )}
         </TouchableOpacity>
 
         {/* Appearance section */}
-        <Text style={styles.sectionLabel}>APPEARANCE</Text>
+        <Text style={styles.sectionLabel}>{t('profile.appearance')}</Text>
         <View style={styles.card}>
-          <Text style={styles.appearanceHint}>Choose how the app looks</Text>
+          <Text style={styles.appearanceHint}>{t('profile.appearanceHint')}</Text>
           <View style={styles.segmented}>
-            {THEME_OPTIONS.map(({ value, label, Icon }) => {
+            {THEME_OPTIONS.map(({ value, labelKey, Icon }) => {
               const active = themePreference === value;
               return (
                 <TouchableOpacity
@@ -222,7 +229,29 @@ export default function ProfileScreen() {
                 >
                   <Icon color={active ? '#fff' : theme.textMuted} size={16} />
                   <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
-                    {label}
+                    {t(labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Language section */}
+        <Text style={styles.sectionLabel}>{t('profile.language')}</Text>
+        <View style={styles.card}>
+          <View style={styles.segmented}>
+            {LANGUAGE_OPTIONS.map(({ value }) => {
+              const active = locale === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.segmentButton, active && styles.segmentButtonActive]}
+                  onPress={() => setLocale(value)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
+                    {t(`language.${value}`)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -233,7 +262,7 @@ export default function ProfileScreen() {
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <LogOut color="#ff3b30" size={18} />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

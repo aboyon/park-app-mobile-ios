@@ -4,6 +4,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpac
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
@@ -32,7 +33,7 @@ type Parking = {
   available_slots: number;
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
-  lock_slot_charge_policy: string;
+  lock_slot_charge_policy?: string;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
 };
@@ -55,6 +56,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const router = useRouter();
+  const { t } = useLocale();
   const [reserving, setReserving] = useState(false);
   const [reservationError, setReservationError] = useState('');
 
@@ -94,7 +96,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       setSelectedVehicleId(defaultVehicle?.id ?? vehiclesData[0]?.id ?? null);
       setSelectingVehicle(true);
     } catch {
-      setVehiclesError('Could not load data');
+      setVehiclesError(t('parkingDetail.couldNotLoadData'));
     } finally {
       setVehiclesLoading(false);
     }
@@ -114,14 +116,14 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
 
       if (!response.ok) {
         const data = await response.json();
-        setReservationError(data.message ?? 'Could not complete reservation');
+        setReservationError(data.message ?? t('parkingDetail.couldNotReserve'));
         return;
       }
 
       setSelectingVehicle(false);
       await refresh();
     } catch {
-      setReservationError('Connection error');
+      setReservationError(t('common.connectionError'));
     } finally {
       setReserving(false);
     }
@@ -132,38 +134,38 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backText}>← Back</Text>
+        <Text style={styles.backText}>{t('common.back')}</Text>
       </TouchableOpacity>
 
       <View style={styles.card}>
         <Text style={styles.name}>{parking.name}</Text>
         <Text style={styles.address}>{parking.address}</Text>
         <Text style={styles.distance}>
-          {(parking.distance / 1000).toFixed(1)} km away
+          {t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}
         </Text>
 
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.metaLabel}>Available slots</Text>
+          <Text style={styles.metaLabel}>{t('parkingDetail.availableSlots')}</Text>
           <Text style={[styles.metaValue, noSlotsAvailable && styles.noSlots]}>
             {parking.available_slots}
           </Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.metaLabel}>Reservation expires after</Text>
-          <Text style={styles.metaValue}>{parking.keep_slot_open_minutes} min</Text>
+          <Text style={styles.metaLabel}>{t('parkingDetail.reservationExpires')}</Text>
+          <Text style={styles.metaValue}>{parking.keep_slot_open_minutes} {t('parkingDetail.min')}</Text>
         </View>
       </View>
 
       {Object.keys(parking.today_rate_cents ?? {}).length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Today's rates</Text>
+          <Text style={styles.sectionTitle}>{t('parkingDetail.todayRates')}</Text>
           {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => (
             <View key={type} style={[styles.rateRow, i < arr.length - 1 && styles.rateRowBorder]}>
               <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
               <Text style={styles.rateVehicle}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+                {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
               </Text>
               <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
             </View>
@@ -177,7 +179,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
             <View style={styles.warningAccent} />
             <View style={styles.warningBody}>
               <Text style={styles.warningTitle}>
-                WARNING: Charges apply if you don't arrive within {parking.keep_slot_open_minutes} min
+                {t('parkingDetail.warningCharges', { minutes: parking.keep_slot_open_minutes })}
               </Text>
               {parking.lock_slot_charge_policy === 'flat_rate' ? (
                 <Text style={styles.warningRate}>
@@ -187,7 +189,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
                 Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
                   <View key={type} style={styles.rateRow}>
                     <Text style={styles.warningVehicle}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                      {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
                     </Text>
                     <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
                   </View>
@@ -203,36 +205,32 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
             <>
               <View style={styles.noPaymentCard}>
                 <Text style={styles.noPaymentIcon}>💳</Text>
-                <Text style={styles.noPaymentTitle}>No payment method</Text>
-                <Text style={styles.noPaymentMessage}>
-                  You need to add a payment method before reserving a spot.
-                </Text>
+                <Text style={styles.noPaymentTitle}>{t('parkingDetail.noPaymentTitle')}</Text>
+                <Text style={styles.noPaymentMessage}>{t('parkingDetail.noPaymentMessage')}</Text>
                 <TouchableOpacity
                   style={styles.addPaymentButton}
                   onPress={() => { setSelectingVehicle(false); router.navigate('/(tabs)/payments'); }}
                 >
-                  <Text style={styles.addPaymentButtonText}>Add Payment Method</Text>
+                  <Text style={styles.addPaymentButtonText}>{t('parkingDetail.addPaymentMethod')}</Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
                 style={styles.cancelPickerButton}
                 onPress={() => { setSelectingVehicle(false); setNoPaymentMethod(false); }}
               >
-                <Text style={styles.cancelPickerText}>Cancel</Text>
+                <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-          <Text style={styles.vehiclePickerTitle}>Select your vehicle</Text>
+          <Text style={styles.vehiclePickerTitle}>{t('parkingDetail.selectVehicle')}</Text>
 
           {vehiclesLoading ? (
             <ActivityIndicator color="#6366f1" style={styles.vehiclesLoader} />
           ) : vehiclesError !== '' ? (
             <Text style={styles.errorText}>{vehiclesError}</Text>
           ) : vehicles.length === 0 ? (
-            <Text style={styles.vehiclesEmpty}>
-              No vehicles found. Add one in the Vehicles tab first.
-            </Text>
+            <Text style={styles.vehiclesEmpty}>{t('parkingDetail.noVehicles')}</Text>
           ) : (
             <View style={styles.vehicleGroup}>
               {vehicles.map((vehicle, index) => (
@@ -245,9 +243,10 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
                     <View style={styles.vehicleRowInfo}>
                       <Text style={styles.vehicleRowPlate}>{vehicle.license_plate}</Text>
                       <Text style={styles.vehicleRowType}>
-                        {vehicle.vehicle_type.charAt(0).toUpperCase() +
-                          vehicle.vehicle_type.slice(1)}
-                        {vehicle.is_default ? ' · Default' : ''}
+                        {t(`vehicles.types.${vehicle.vehicle_type}`, {
+                          defaultValue: vehicle.vehicle_type.charAt(0).toUpperCase() + vehicle.vehicle_type.slice(1),
+                        })}
+                        {vehicle.is_default ? t('parkingDetail.defaultVehicleSuffix') : ''}
                       </Text>
                     </View>
                     {selectedVehicleId === vehicle.id && (
@@ -274,7 +273,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
             {reserving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.reserveButtonText}>Confirm Reservation</Text>
+              <Text style={styles.reserveButtonText}>{t('parkingDetail.confirmReservation')}</Text>
             )}
           </TouchableOpacity>
 
@@ -282,7 +281,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
             style={styles.cancelPickerButton}
             onPress={() => setSelectingVehicle(false)}
           >
-            <Text style={styles.cancelPickerText}>Cancel</Text>
+            <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
             </>
           )}
@@ -297,7 +296,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
           disabled={noSlotsAvailable}
         >
           <Text style={styles.reserveButtonText}>
-            {noSlotsAvailable ? 'No Slots Available' : 'Reserve a Spot'}
+            {noSlotsAvailable ? t('parkingDetail.noSlotsAvailable') : t('parkingDetail.reserveSpot')}
           </Text>
         </TouchableOpacity>
       )}
@@ -307,7 +306,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       )}
 
       <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
-        <Text style={styles.mapsButtonText}>Open in Maps</Text>
+        <Text style={styles.mapsButtonText}>{t('parkingDetail.openMaps')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

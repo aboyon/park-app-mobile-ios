@@ -17,6 +17,7 @@ import {
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type VehicleType = 'car' | 'truck' | 'motorcycle' | 'pickup' | 'suv';
@@ -36,12 +37,12 @@ type FormState = {
 
 const BLANK_FORM: FormState = { license_plate: '', vehicle_type: 'car', is_default: false };
 
-const VEHICLE_TYPES: { value: VehicleType; label: string; icon: string }[] = [
-  { value: 'car',        label: 'Car',        icon: '🚗' },
-  { value: 'truck',      label: 'Truck',      icon: '🚚' },
-  { value: 'pickup',     label: 'Pickup',     icon: '🛻' },
-  { value: 'suv',        label: 'SUV',        icon: '🚙' },
-  { value: 'motorcycle', label: 'Motorcycle', icon: '🏍️' },
+const VEHICLE_TYPES: { value: VehicleType; icon: string }[] = [
+  { value: 'car',        icon: '🚗' },
+  { value: 'truck',      icon: '🚚' },
+  { value: 'pickup',     icon: '🛻' },
+  { value: 'suv',        icon: '🚙' },
+  { value: 'motorcycle', icon: '🏍️' },
 ];
 
 const VEHICLE_ICON: Record<VehicleType, string> = {
@@ -56,6 +57,7 @@ export default function VehiclesScreen() {
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ export default function VehiclesScreen() {
         const data = await response.json();
         setVehicles(data);
       } catch {
-        setFetchError('Could not load vehicles');
+        setFetchError(t('vehicles.couldNotLoad'));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -121,7 +123,7 @@ export default function VehiclesScreen() {
 
   const handleSubmit = async () => {
     if (!form.license_plate.trim()) {
-      setSaveError('License plate is required');
+      setSaveError(t('vehicles.licensePlateRequired'));
       return;
     }
     setSaving(true);
@@ -138,13 +140,13 @@ export default function VehiclesScreen() {
       });
       if (!response.ok) {
         const data = await response.json();
-        setSaveError(data.message ?? 'Could not save vehicle');
+        setSaveError(data.message ?? t('vehicles.couldNotSave'));
         return;
       }
       closeForm();
       fetchVehicles();
     } catch {
-      setSaveError('Connection error');
+      setSaveError(t('common.connectionError'));
     } finally {
       setSaving(false);
     }
@@ -162,37 +164,37 @@ export default function VehiclesScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <TouchableOpacity style={styles.backButton} onPress={closeForm}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>{t('common.back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.sectionHeader}>DETAILS</Text>
+          <Text style={styles.sectionHeader}>{t('vehicles.sectionDetails')}</Text>
           <View style={styles.groupCard}>
             <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>License Plate</Text>
+              <Text style={styles.fieldLabel}>{t('vehicles.licensePlate')}</Text>
               <TextInput
                 style={styles.fieldInput}
                 value={form.license_plate}
                 onChangeText={(v) => setForm({ ...form, license_plate: v.toUpperCase() })}
-                placeholder="e.g. AB-12-CD"
+                placeholder={t('vehicles.licensePlatePlaceholder')}
                 placeholderTextColor={theme.textMuted}
                 autoCapitalize="characters"
               />
             </View>
             <View style={styles.groupDivider} />
             <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Set as default</Text>
+              <Text style={styles.fieldLabel}>{t('vehicles.setAsDefault')}</Text>
               <Switch
                 value={form.is_default}
                 onValueChange={(v) => setForm({ ...form, is_default: v })}
-                trackColor={{ false: theme.border, true: '#007AFF' }}
+                trackColor={{ false: theme.border, true: theme.tint }}
                 thumbColor="#fff"
               />
             </View>
           </View>
 
-          <Text style={styles.sectionHeader}>TYPE</Text>
+          <Text style={styles.sectionHeader}>{t('vehicles.sectionType')}</Text>
           <View style={styles.groupCard}>
-            {VEHICLE_TYPES.map(({ value, label, icon }, index) => (
+            {VEHICLE_TYPES.map(({ value, icon }, index) => (
               <View key={value}>
                 {index > 0 && <View style={styles.groupDivider} />}
                 <TouchableOpacity
@@ -200,7 +202,7 @@ export default function VehiclesScreen() {
                   onPress={() => setForm({ ...form, vehicle_type: value })}
                 >
                   <Text style={styles.typeIcon}>{icon}</Text>
-                  <Text style={styles.typeLabel}>{label}</Text>
+                  <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
                   {form.vehicle_type === value && (
                     <Text style={styles.typeCheck}>✓</Text>
                   )}
@@ -220,7 +222,7 @@ export default function VehiclesScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.submitButtonText}>
-                {editing ? 'Save Changes' : 'Add Vehicle'}
+                {editing ? t('vehicles.saveChanges') : t('vehicles.addVehicle')}
               </Text>
             )}
           </TouchableOpacity>
@@ -232,7 +234,7 @@ export default function VehiclesScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.tint} />
       </View>
     );
   }
@@ -242,7 +244,7 @@ export default function VehiclesScreen() {
       <View style={styles.centered}>
         <Text style={styles.errorText}>{fetchError}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchVehicles()}>
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -251,17 +253,17 @@ export default function VehiclesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.heading}>My Vehicles</Text>
+        <Text style={styles.heading}>{t('vehicles.title')}</Text>
         <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-          <Text style={styles.addButtonText}>+ Add</Text>
+          <Text style={styles.addButtonText}>{t('vehicles.add')}</Text>
         </TouchableOpacity>
       </View>
 
       {vehicles.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>No vehicles yet</Text>
+          <Text style={styles.emptyText}>{t('vehicles.empty')}</Text>
           <TouchableOpacity style={styles.addEmptyButton} onPress={openAdd}>
-            <Text style={styles.addEmptyButtonText}>Add your first vehicle</Text>
+            <Text style={styles.addEmptyButtonText}>{t('vehicles.addFirst')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -281,15 +283,13 @@ export default function VehiclesScreen() {
                 <Text style={styles.vehicleIcon}>{VEHICLE_ICON[item.vehicle_type]}</Text>
                 <View>
                   <Text style={styles.licensePlate}>{item.license_plate}</Text>
-                  <Text style={styles.vehicleType}>
-                    {item.vehicle_type.charAt(0).toUpperCase() + item.vehicle_type.slice(1)}
-                  </Text>
+                  <Text style={styles.vehicleType}>{t(`vehicles.types.${item.vehicle_type}`)}</Text>
                 </View>
               </View>
               <View style={styles.cardRight}>
                 {item.is_default && (
                   <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultBadgeText}>Default</Text>
+                    <Text style={styles.defaultBadgeText}>{t('vehicles.defaultBadge')}</Text>
                   </View>
                 )}
                 <Text style={styles.cardArrow}>›</Text>
@@ -333,7 +333,7 @@ function makeStyles(theme: AppTheme) {
       color: theme.text,
     },
     addButton: {
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 20,
@@ -387,13 +387,13 @@ function makeStyles(theme: AppTheme) {
       gap: 8,
     },
     defaultBadge: {
-      backgroundColor: '#007AFF22',
+      backgroundColor: `${theme.tint}22`,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 10,
     },
     defaultBadgeText: {
-      color: '#007AFF',
+      color: theme.tint,
       fontSize: 12,
       fontWeight: '600',
     },
@@ -407,7 +407,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 16,
     },
     addEmptyButton: {
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 10,
@@ -428,7 +428,7 @@ function makeStyles(theme: AppTheme) {
     },
     backText: {
       fontSize: 16,
-      color: '#007AFF',
+      color: theme.tint,
     },
     sectionHeader: {
       fontSize: 12,
@@ -492,7 +492,7 @@ function makeStyles(theme: AppTheme) {
     },
     typeCheck: {
       fontSize: 16,
-      color: '#007AFF',
+      color: theme.tint,
       fontWeight: '600',
     },
     errorText: {
@@ -502,11 +502,12 @@ function makeStyles(theme: AppTheme) {
       marginVertical: 8,
     },
     submitButton: {
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',
       marginTop: 20,
+      marginHorizontal: 20,
     },
     submitButtonDisabled: {
       opacity: 0.5,
@@ -519,7 +520,7 @@ function makeStyles(theme: AppTheme) {
     retryButton: {
       paddingHorizontal: 24,
       paddingVertical: 10,
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       borderRadius: 8,
       marginTop: 8,
     },

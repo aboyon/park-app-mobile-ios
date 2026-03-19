@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function SignupScreen() {
@@ -11,6 +12,7 @@ export default function SignupScreen() {
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const router = useRouter();
+  const { t } = useLocale();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -23,7 +25,7 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (password !== passwordConfirmation) {
-      setError('Passwords do not match');
+      setError(t('signup.passwordMismatch'));
       return;
     }
 
@@ -41,7 +43,7 @@ export default function SignupScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message ?? 'Could not create account');
+        setError(data.message ?? t('signup.couldNotCreate'));
         return;
       }
 
@@ -51,7 +53,7 @@ export default function SignupScreen() {
         router.replace('/login');
       }
     } catch {
-      setError('Connection error');
+      setError(t('common.connectionError'));
     } finally {
       setLoading(false);
     }
@@ -62,40 +64,40 @@ export default function SignupScreen() {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.title}>{t('signup.title')}</Text>
 
-      <Text style={styles.label}>Name</Text>
+      <Text style={styles.label}>{t('signup.name')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Full name"
+        placeholder={t('signup.fullNamePlaceholder')}
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
       />
 
-      <Text style={styles.label}>Email</Text>
+      <Text style={styles.label}>{t('signup.email')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder={t('signup.email')}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
       />
 
-      <Text style={styles.label}>Password</Text>
+      <Text style={styles.label}>{t('signup.password')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder={t('signup.password')}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
 
-      <Text style={styles.label}>Confirm Password</Text>
+      <Text style={styles.label}>{t('signup.confirmPassword')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Confirm password"
+        placeholder={t('signup.confirmPasswordPlaceholder')}
         value={passwordConfirmation}
         onChangeText={setPasswordConfirmation}
         secureTextEntry
@@ -107,14 +109,14 @@ export default function SignupScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Create Account</Text>
+          <Text style={styles.buttonText}>{t('signup.signUp')}</Text>
         )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
+        <Text style={styles.footerText}>{t('signup.haveAccount')}</Text>
         <TouchableOpacity onPress={() => router.replace('/login')}>
-          <Text style={styles.footerLink}>Log in</Text>
+          <Text style={styles.footerLink}>{t('signup.login')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -155,7 +157,7 @@ function makeStyles(theme: AppTheme) {
     },
     button: {
       width: '100%',
-      backgroundColor: '#007AFF',
+      backgroundColor: theme.tint,
       padding: 15,
       borderRadius: 8,
       alignItems: 'center',
@@ -180,7 +182,7 @@ function makeStyles(theme: AppTheme) {
     },
     footerLink: {
       fontSize: 14,
-      color: '#007AFF',
+      color: theme.tint,
       fontWeight: '600',
     },
   });

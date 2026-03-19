@@ -13,6 +13,7 @@ import {
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export type Payment = {
@@ -48,7 +49,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   cancelled: { bg: '#fff1f0', text: '#ff3b30' },
 };
 
-const PAYMENT_STATUS: Record<string, { bg: string; text: string; icon: string }> = {
+const PAYMENT_STATUS_ICONS: Record<string, { bg: string; text: string; icon: string }> = {
   completed: { bg: '#f0fdf4', text: '#15803d', icon: '✅' },
   pending:   { bg: '#fffbeb', text: '#d97706', icon: '⏳' },
   failed:    { bg: '#fff1f0', text: '#ff3b30', icon: '❌' },
@@ -87,7 +88,11 @@ function PaymentDetailModal({
   theme: AppTheme;
 }) {
   const styles = makeStyles(theme);
-  const ps = PAYMENT_STATUS[payment.status] ?? PAYMENT_STATUS.pending;
+  const { t } = useLocale();
+  const ps = PAYMENT_STATUS_ICONS[payment.status] ?? PAYMENT_STATUS_ICONS.pending;
+  const statusLabel = t(`reservationDetail.paymentStatus.${payment.status}`, {
+    defaultValue: payment.status.charAt(0).toUpperCase() + payment.status.slice(1),
+  });
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -107,9 +112,7 @@ function PaymentDetailModal({
               {formatAmount(payment.amount_cents, payment.amount_currency)}
             </Text>
             <View style={[styles.sheetBadge, { backgroundColor: ps.bg }]}>
-              <Text style={[styles.sheetBadgeText, { color: ps.text }]}>
-                {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-              </Text>
+              <Text style={[styles.sheetBadgeText, { color: ps.text }]}>{statusLabel}</Text>
             </View>
           </View>
 
@@ -118,34 +121,34 @@ function PaymentDetailModal({
           {/* detail rows */}
           <View style={styles.sheetSection}>
             <View style={styles.sheetRow}>
-              <Text style={styles.sheetLabel}>Product</Text>
+              <Text style={styles.sheetLabel}>{t('reservationDetail.product')}</Text>
               <Text style={styles.sheetValue}>{payment.product}</Text>
             </View>
             <View style={styles.sheetRowDivider} />
             <View style={styles.sheetRow}>
-              <Text style={styles.sheetLabel}>Payment method</Text>
+              <Text style={styles.sheetLabel}>{t('reservationDetail.paymentMethod')}</Text>
               <Text style={styles.sheetValue}>{payment.payment_method_description}</Text>
             </View>
             <View style={styles.sheetRowDivider} />
             <View style={styles.sheetRow}>
-              <Text style={styles.sheetLabel}>Date</Text>
+              <Text style={styles.sheetLabel}>{t('reservationDetail.date')}</Text>
               <Text style={styles.sheetValue}>{formatDate(payment.created_at)}</Text>
             </View>
             <View style={styles.sheetRowDivider} />
             <View style={styles.sheetRow}>
-              <Text style={styles.sheetLabel}>Reference</Text>
+              <Text style={styles.sheetLabel}>{t('reservationDetail.reference')}</Text>
               <Text style={styles.sheetValue}>#{payment.id}</Text>
             </View>
           </View>
 
           <View style={styles.sheetDescriptionBlock}>
-            <Text style={styles.sheetDescriptionLabel}>Description</Text>
+            <Text style={styles.sheetDescriptionLabel}>{t('reservationDetail.description')}</Text>
             <Text style={styles.sheetDescriptionText}>{payment.line_item_description}</Text>
           </View>
         </ScrollView>
 
         <TouchableOpacity style={styles.sheetCloseButton} onPress={onClose}>
-          <Text style={styles.sheetCloseText}>Close</Text>
+          <Text style={styles.sheetCloseText}>{t('common.close')}</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -164,10 +167,15 @@ export default function ReservationDetail({
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
   const statusStyle = STATUS_COLORS[reservation.status] ?? STATUS_COLORS.expired;
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  const statusLabel = t(`reservations.status.${reservation.status}`, {
+    defaultValue: reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1),
+  });
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -179,12 +187,12 @@ export default function ReservationDetail({
       });
       if (!response.ok) {
         const data = await response.json();
-        setCancelError(data.message ?? 'Could not cancel reservation');
+        setCancelError(data.message ?? t('reservationDetail.couldNotCancel'));
         return;
       }
       onCancel?.();
     } catch {
-      setCancelError('Connection error');
+      setCancelError(t('common.connectionError'));
     } finally {
       setCancelling(false);
     }
@@ -194,7 +202,7 @@ export default function ReservationDetail({
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backText}>← Back</Text>
+        <Text style={styles.backText}>{t('common.back')}</Text>
       </TouchableOpacity>
 
       <View style={styles.card}>
@@ -204,32 +212,30 @@ export default function ReservationDetail({
             <Text style={styles.parkingAddress}>{reservation.parking.address}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.badgeText, { color: statusStyle.text }]}>
-              {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
-            </Text>
+            <Text style={[styles.badgeText, { color: statusStyle.text }]}>{statusLabel}</Text>
           </View>
         </View>
 
         <View style={styles.divider} />
         <View style={styles.row}>
-          <Text style={styles.label}>Vehicle</Text>
+          <Text style={styles.label}>{t('reservationDetail.vehicle')}</Text>
           <Text style={styles.value}>{reservation.vehicle.license_plate}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Started</Text>
+          <Text style={styles.label}>{t('reservationDetail.started')}</Text>
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
         </View>
 
         {reservation.end_time && (
           <View style={styles.row}>
-            <Text style={styles.label}>Ended</Text>
+            <Text style={styles.label}>{t('reservationDetail.ended')}</Text>
             <Text style={styles.value}>{formatDate(reservation.end_time)}</Text>
           </View>
         )}
 
         {reservation.end_time && (
           <View style={styles.row}>
-            <Text style={styles.label}>Duration</Text>
+            <Text style={styles.label}>{t('reservationDetail.duration')}</Text>
             <Text style={styles.value}>
               {duration(reservation.start_time, reservation.end_time)}
             </Text>
@@ -239,9 +245,9 @@ export default function ReservationDetail({
 
       {reservation.payments?.length > 0 && (
         <View style={styles.paymentsCard}>
-          <Text style={styles.paymentsTitle}>Payments</Text>
+          <Text style={styles.paymentsTitle}>{t('reservationDetail.payments')}</Text>
           {reservation.payments.map((p, index) => {
-            const ps = PAYMENT_STATUS[p.status] ?? PAYMENT_STATUS.pending;
+            const ps = PAYMENT_STATUS_ICONS[p.status] ?? PAYMENT_STATUS_ICONS.pending;
             return (
               <TouchableOpacity
                 key={p.id}
@@ -283,7 +289,7 @@ export default function ReservationDetail({
             {cancelling ? (
               <ActivityIndicator color="#ff3b30" />
             ) : (
-              <Text style={styles.cancelButtonText}>Cancel Reservation</Text>
+              <Text style={styles.cancelButtonText}>{t('reservationDetail.cancelReservation')}</Text>
             )}
           </TouchableOpacity>
         </>

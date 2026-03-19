@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View 
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function LoginScreen() {
@@ -12,6 +13,7 @@ export default function LoginScreen() {
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const router = useRouter();
+  const { t } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,13 +34,13 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message ?? 'Invalid credentials');
+        setError(data.message ?? t('login.invalidCredentials'));
         return;
       }
 
       login(data.token);
     } catch {
-      setError('Connection error');
+      setError(t('common.connectionError'));
     } finally {
       setLoading(false);
     }
@@ -51,8 +53,8 @@ export default function LoginScreen() {
         <View style={styles.logoCircle}>
           <Text style={styles.logoText}>P</Text>
         </View>
-        <Text style={styles.title}>Park App</Text>
-        <Text style={styles.subtitle}>Find and reserve parking spots nearby</Text>
+        <Text style={styles.title}>{t('login.appName')}</Text>
+        <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
       </View>
 
       {/* Input card */}
@@ -61,7 +63,7 @@ export default function LoginScreen() {
           <Mail color={theme.textMuted} size={18} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t('login.email')}
             placeholderTextColor={theme.textMuted}
             value={email}
             onChangeText={setEmail}
@@ -76,7 +78,7 @@ export default function LoginScreen() {
           <Lock color={theme.textMuted} size={18} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder={t('login.password')}
             placeholderTextColor={theme.textMuted}
             value={password}
             onChangeText={setPassword}
@@ -91,14 +93,14 @@ export default function LoginScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Sign In</Text>
+          <Text style={styles.buttonText}>{t('login.signIn')}</Text>
         )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account? </Text>
+        <Text style={styles.footerText}>{t('login.noAccount')}</Text>
         <TouchableOpacity onPress={() => router.replace('/signup')}>
-          <Text style={styles.footerLink}>Create account</Text>
+          <Text style={styles.footerLink}>{t('login.createAccount')}</Text>
         </TouchableOpacity>
       </View>
     </View>

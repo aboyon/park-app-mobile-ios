@@ -48,8 +48,9 @@ type MeData = {
 };
 
 export type NotificationAlert = {
-  type: 'reservation_cancelled' | 'reservation_expired' | 'payment_completed' | 'reservation_completed';
-  message: string;
+  type: 'reservation_cancelled' | 'reservation_expired' | 'payment_completed';
+  triggeredBy?: 'admin';
+  parkingName?: string;
 };
 
 type MeContextType = {
@@ -74,16 +75,6 @@ const MeContext = createContext<MeContextType>({
 // registered once per app session regardless of how many times the user logs in.
 let registeredPushToken: string | null = null;
 
-const NOTIFICATION_MESSAGES: Record<string, { default: string; admin: string }> = {
-  reservation_cancelled: {
-    default: 'Your reservation has been cancelled.',
-    admin: 'Your reservation has been cancelled by the parking.',
-  },
-  reservation_expired: {
-    default: 'Your reservation has expired.',
-    admin: 'Your reservation has been expired by the parking.',
-  }
-};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -159,15 +150,14 @@ export function MeProvider({ children }: { children: ReactNode }) {
     const data = notification.request.content.data as { type?: string; triggered_by?: string };
     const type = data?.type;
     if (type === 'reservation_cancelled' || type === 'reservation_expired') {
-      const byAdmin = data?.triggered_by === 'admin';
-      const message = byAdmin
-        ? NOTIFICATION_MESSAGES[type].admin
-        : NOTIFICATION_MESSAGES[type].default;
-      setNotificationAlert({ type, message });
+      setNotificationAlert({
+        type,
+        triggeredBy: data?.triggered_by === 'admin' ? 'admin' : undefined,
+      });
       refresh();
     } else if (type === 'notify_payment_completed' || type === 'reservation_completed') {
-      const parkingName = meRef.current?.active_reservation?.parking.name ?? 'the parking';
-      setNotificationAlert({ type: 'payment_completed', message: `Thanks for parking at ${parkingName}!` });
+      const parkingName = meRef.current?.active_reservation?.parking.name;
+      setNotificationAlert({ type: 'payment_completed', parkingName });
       refresh();
     }
   }, [refresh]);

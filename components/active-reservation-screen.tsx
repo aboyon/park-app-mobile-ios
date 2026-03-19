@@ -3,6 +3,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, Toucha
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
+import { useLocale } from '@/context/locale';
 import { type ActiveReservation } from '@/context/me';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
@@ -58,6 +59,7 @@ export default function ActiveReservationScreen({
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
+  const { t } = useLocale();
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
   const [confirmingStart, setConfirmingStart] = useState(false);
@@ -130,12 +132,12 @@ export default function ActiveReservationScreen({
       });
       if (!response.ok) {
         const data = await response.json();
-        setError(data.message ?? 'Could not cancel reservation');
+        setError(data.message ?? t('activeReservation.couldNotCancel'));
         return;
       }
       onDismiss();
     } catch {
-      setError('Connection error');
+      setError(t('common.connectionError'));
     } finally {
       setCancelling(false);
     }
@@ -151,12 +153,12 @@ export default function ActiveReservationScreen({
       );
       if (!response.ok) {
         const data = await response.json();
-        setError(data.message ?? 'Could not start reservation');
+        setError(data.message ?? t('activeReservation.couldNotStart'));
         return;
       }
       onDismiss();
     } catch {
-      setError('Connection error');
+      setError(t('common.connectionError'));
     } finally {
       setStarting(false);
     }
@@ -177,7 +179,7 @@ export default function ActiveReservationScreen({
       }
     >
       <Text style={styles.heading}>
-        {isInProgress ? "You're parked at" : 'You reserved a spot at'}
+        {isInProgress ? t('activeReservation.parkedAt') : t('activeReservation.reservedAt')}
       </Text>
 
       <View style={styles.card}>
@@ -187,11 +189,11 @@ export default function ActiveReservationScreen({
         <View style={styles.divider} />
 
         <View style={styles.row}>
-          <Text style={styles.label}>Reserved at</Text>
+          <Text style={styles.label}>{t('activeReservation.reservedAtLabel')}</Text>
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Hourly rate</Text>
+          <Text style={styles.label}>{t('activeReservation.hourlyRate')}</Text>
           <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
         </View>
       </View>
@@ -199,32 +201,32 @@ export default function ActiveReservationScreen({
       {isInProgress ? (
         <View style={styles.card}>
           <View style={styles.vehicleLicencePlate}>
-            <Text style={styles.licensePlate}>{reservation.vehicle.license_plate}</Text>
+            <Text style={styles.licensePlate}>{reservation.vehicle?.license_plate}</Text>
           </View>
           <View style={styles.elapsed}>
             <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
-            <Text style={styles.elapsedLabel}>Parking duration</Text>
+            <Text style={styles.elapsedLabel}>{t('activeReservation.parkingDuration')}</Text>
           </View>
           <View style={styles.divider} />
           {currentRate ? (
             <>
               <View style={styles.row}>
-                <Text style={styles.label}>Rate{vehicleType ? ` · ${vehicleType}` : ''}</Text>
+                <Text style={styles.label}>{t('activeReservation.rate')}{vehicleType ? ` · ${vehicleType}` : ''}</Text>
                 <Text style={styles.value}>{formatRate(currentRate.rate_per_hour_cents)}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Billed hours</Text>
-                <Text style={styles.value}>{billedHours(elapsedSeconds)} h</Text>
+                <Text style={styles.label}>{t('activeReservation.billedHours')}</Text>
+                <Text style={styles.value}>{billedHours(elapsedSeconds)} {t('common.hours')}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Total cost</Text>
+                <Text style={styles.label}>{t('activeReservation.totalCost')}</Text>
                 <Text style={[styles.value, styles.costValue]}>
                   ${calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)}
                 </Text>
               </View>
             </>
           ) : (
-            <Text style={styles.noRate}>No rate available for the current time</Text>
+            <Text style={styles.noRate}>{t('activeReservation.noRateAvailable')}</Text>
           )}
         </View>
       ) : (
@@ -233,7 +235,7 @@ export default function ActiveReservationScreen({
             <View style={styles.countdownAccent} />
             <View style={styles.countdownBody}>
               <Text style={styles.countdownTimer}>{formatCountdown(remainingSeconds)}</Text>
-              <Text style={styles.countdownLabel}>to arrive — reservation cancels after this</Text>
+              <Text style={styles.countdownLabel}>{t('activeReservation.toArrive')}</Text>
             </View>
           </View>
         )
@@ -246,7 +248,7 @@ export default function ActiveReservationScreen({
           {confirmingStart ? (
             <View style={styles.confirmBox}>
               <Text style={styles.confirmText}>
-                Your parking session will start immediately and charges will begin now. Are you ready to proceed?
+                {t('activeReservation.confirmStart')}
               </Text>
               <TouchableOpacity
                 style={[styles.startButton, starting && styles.buttonDisabled]}
@@ -256,7 +258,7 @@ export default function ActiveReservationScreen({
                 {starting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.startButtonText}>Yes, start parking</Text>
+                  <Text style={styles.startButtonText}>{t('activeReservation.yesStart')}</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -264,7 +266,7 @@ export default function ActiveReservationScreen({
                 onPress={() => setConfirmingStart(false)}
                 disabled={starting}
               >
-                <Text style={styles.notYetText}>Not yet</Text>
+                <Text style={styles.notYetText}>{t('activeReservation.notYet')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -273,7 +275,7 @@ export default function ActiveReservationScreen({
               onPress={() => setConfirmingStart(true)}
               disabled={busy}
             >
-              <Text style={styles.startButtonText}>Start Parking</Text>
+              <Text style={styles.startButtonText}>{t('activeReservation.startParking')}</Text>
             </TouchableOpacity>
           )}
 
@@ -285,7 +287,7 @@ export default function ActiveReservationScreen({
             {cancelling ? (
               <ActivityIndicator color="#ff3b30" />
             ) : (
-              <Text style={styles.cancelButtonText}>Cancel Reservation</Text>
+              <Text style={styles.cancelButtonText}>{t('activeReservation.cancelReservation')}</Text>
             )}
           </TouchableOpacity>
         </>
