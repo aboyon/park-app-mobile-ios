@@ -21,6 +21,7 @@ const es = {
     default: 'Por defecto',
     kmAway: 'a %{distance} km',
     hours: 'h',
+    openMaps: 'Abrir en mapas'
   },
 
   // Login
@@ -263,7 +264,7 @@ const es = {
     addFirst: 'Programar una reserva',
     sectionLabel: 'RESERVAS',
     createTitle: 'Programar un estacionamiento',
-    editTitle: 'Editar reserva programada',
+    editTitle: 'Reserva programada',
     sectionParking: 'ESTACIONAMIENTO',
     sectionSchedule: 'HORARIO',
     searchParkingPlaceholder: 'Buscar estacionamiento...',
@@ -271,6 +272,7 @@ const es = {
     startTime: 'Inicio',
     endTime: 'Fin',
     parkingRequired: 'Seleccioná un estacionamiento',
+    startInPast: 'La hora de inicio no puede ser en el pasado',
     endAfterStart: 'El fin debe ser posterior al inicio',
     couldNotLoad: 'No se pudieron cargar las reservas programadas',
     couldNotSave: 'No se pudo guardar la reserva',
@@ -280,7 +282,7 @@ const es = {
     deleteTitle: 'Eliminar reserva',
     deleteMessage: '¿Querés eliminar esta reserva?',
     changeParking: 'Cambiar',
-    parkingId: 'ID',
+    parkingId: 'ID'
   },
 
   // Notifications

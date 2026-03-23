@@ -1,11 +1,12 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useFocusEffect } from 'expo-router';
-import { CalendarClock } from 'lucide-react-native';
+import { CalendarClock, Map, Phone } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
@@ -29,13 +30,21 @@ type ParkingResult = {
   address: string;
 };
 
+type Product = {
+  id: number;
+  name: string;
+  address: string;
+  phone?: string;
+  latitude: number;
+  longitude: number;
+};
+
 type ScheduledReservation = {
   id: number;
-  parking_id: number;
   start_time: string;
   end_time: string;
   status?: string;
-  parking?: ParkingResult;
+  product?: Product;
 };
 
 type FormState = {
@@ -85,6 +94,14 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   expired:   { bg: '#f5f5f5', text: '#6b7280' },
 };
 
+function openInMaps(latitude: number, longitude: number, name: string) {
+  const label = encodeURIComponent(name);
+  const url = Platform.OS === 'ios'
+    ? `maps://?q=${label}&ll=${latitude},${longitude}`
+    : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
+  Linking.openURL(url);
+}
+
 // ─── DateTimeField ────────────────────────────────────────────────────────────
 // iOS:     compact native pill (display="compact") — tappable, expands inline
 // Android: tap to open, two-step date → time dialog
@@ -92,11 +109,13 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 function DateTimeField({
   label,
   value,
+  minimumDate,
   onChange,
   styles,
 }: {
   label: string;
   value: Date;
+  minimumDate?: Date;
   onChange: (date: Date) => void;
   styles: ReturnType<typeof makeStyles>;
 }) {
@@ -112,6 +131,7 @@ function DateTimeField({
           value={value}
           mode="datetime"
           display="compact"
+          minimumDate={minimumDate}
           onChange={(_, selected) => { if (selected) onChange(selected); }}
         />
       </View>
@@ -152,6 +172,7 @@ function DateTimeField({
           value={androidMode === 'time' ? tempDate.current : value}
           mode={androidMode}
           display="default"
+          minimumDate={androidMode === 'date' ? minimumDate : undefined}
           onChange={handleAndroidChange}
         />
       )}
@@ -247,12 +268,12 @@ export default function ScheduledScreen() {
 
   const openEdit = (r: ScheduledReservation) => {
     setForm({
-      parking_id: r.parking_id,
-      parking_name: r.parking?.name ?? String(r.parking_id),
+      parking_id: r.product?.id ?? null,
+      parking_name: r.product?.name ?? '',
       start_time: new Date(r.start_time),
       end_time: new Date(r.end_time),
     });
-    setSelectedParkingAddress(r.parking?.address ?? '');
+    setSelectedParkingAddress(r.product?.address ?? '');
     setParkingQuery('');
     setParkingResults([]);
     setSaveError('');
@@ -273,6 +294,7 @@ export default function ScheduledScreen() {
 
   const handleSubmit = async () => {
     if (!form.parking_id) { setSaveError(t('scheduled.parkingRequired')); return; }
+    if (form.start_time <= new Date()) { setSaveError(t('scheduled.startInPast')); return; }
     if (form.end_time <= form.start_time) { setSaveError(t('scheduled.endAfterStart')); return; }
 
     setSaving(true);
@@ -428,13 +450,18 @@ export default function ScheduledScreen() {
             <DateTimeField
               label={t('scheduled.startTime')}
               value={form.start_time}
-              onChange={(date) => setForm(prev => ({ ...prev, start_time: date }))}
+              minimumDate={new Date()}
+              onChange={(date) => {
+                const end = new Date(date.getTime() + 2 * 60 * 60 * 1000);
+                setForm(prev => ({ ...prev, start_time: date, end_time: end }));
+              }}
               styles={styles}
             />
             <View style={styles.groupDivider} />
             <DateTimeField
               label={t('scheduled.endTime')}
               value={form.end_time}
+              minimumDate={form.start_time}
               onChange={(date) => setForm(prev => ({ ...prev, end_time: date }))}
               styles={styles}
             />
@@ -537,13 +564,35 @@ export default function ScheduledScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.listRowInfo}>
-                      <Text style={styles.listRowName}>
-                        {item.parking?.name ?? `Parking #${item.parking_id}`}
+                      <Text style={styles.listRowName} numberOfLines={1}>
+                        {item.product?.name ?? '—'}
                       </Text>
-                      <Text style={styles.listRowAddress}>{item.parking?.address}</Text>
+                      <Text style={styles.listRowAddress} numberOfLines={1}>{item.product?.address}</Text>
                       <Text style={styles.listRowRange}>
                         {formatDateRange(item.start_time, item.end_time)}
                       </Text>
+                      <View style={styles.listRowActions}>
+                        {item.product?.phone && (
+                          <TouchableOpacity
+                            style={styles.listRowActionBtn}
+                            onPress={() => Linking.openURL(`tel:${item.product!.phone}`)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Phone color={theme.tint} size={13} />
+                            <Text style={styles.listRowActionText}>{item.product.phone}</Text>
+                          </TouchableOpacity>
+                        )}
+                        {item.product && (
+                          <TouchableOpacity
+                            style={styles.listRowActionBtn}
+                            onPress={() => openInMaps(item.product!.latitude, item.product!.longitude, item.product!.name)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Map color={theme.tint} size={13} />
+                            <Text style={styles.listRowActionText}>{t('common.openMaps')}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                     <View style={styles.listRowRight}>
                       {item.status && (
@@ -574,8 +623,8 @@ function makeStyles(theme: AppTheme) {
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.pageBackground },
 
     // Both views share the same horizontal padding
-    listContent: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
-    formContent: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
+    listContent: { paddingTop: 60, paddingHorizontal: 12, paddingBottom: 40 },
+    formContent: { paddingTop: 60, paddingHorizontal: 12, paddingBottom: 40 },
 
     // ── List ──
     listHeader: {
@@ -585,7 +634,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 20,
     },
     heading: {
-      fontSize: 28,
+      fontSize: 20,
       fontWeight: 'bold',
       color: theme.text,
     },
@@ -620,7 +669,8 @@ function makeStyles(theme: AppTheme) {
       fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.6,
-      marginBottom: 8,
+      marginBottom: 10,
+      marginTop: 10,
     },
     groupCard: {
       backgroundColor: theme.card,
@@ -650,7 +700,10 @@ function makeStyles(theme: AppTheme) {
     listRowInfo: { flex: 1 },
     listRowName: { fontSize: 15, fontWeight: '600', color: theme.text, marginBottom: 2 },
     listRowAddress: { fontSize: 12, color: theme.textMuted, marginBottom: 4 },
-    listRowRange: { fontSize: 13, color: theme.textSecondary },
+    listRowRange: { fontSize: 13, color: theme.textSecondary, marginBottom: 6 },
+    listRowActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 2 },
+    listRowActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    listRowActionText: { fontSize: 12, color: theme.tint, fontWeight: '500' },
     listRowRight: { alignItems: 'flex-end', gap: 4 },
     listRowChevron: { fontSize: 20, color: theme.border, lineHeight: 22 },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },

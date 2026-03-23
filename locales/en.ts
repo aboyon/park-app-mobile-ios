@@ -21,6 +21,7 @@ const en = {
     default: 'Default',
     kmAway: '%{distance} km away',
     hours: 'h',
+    openMaps: 'Open in maps'
   },
 
   // Login
@@ -263,7 +264,7 @@ const en = {
     addFirst: 'Schedule a reservation',
     sectionLabel: 'RESERVATIONS',
     createTitle: 'Reserve a parking',
-    editTitle: 'Edit Scheduled Reservation',
+    editTitle: 'Scheduled Reservation',
     sectionParking: 'PARKING',
     sectionSchedule: 'SCHEDULE',
     searchParkingPlaceholder: 'Search parking...',
@@ -271,6 +272,7 @@ const en = {
     startTime: 'Start',
     endTime: 'End',
     parkingRequired: 'Please select a parking',
+    startInPast: 'Start time cannot be in the past',
     endAfterStart: 'End time must be after start time',
     couldNotLoad: 'Could not load scheduled reservations',
     couldNotSave: 'Could not save reservation',
@@ -280,7 +282,7 @@ const en = {
     deleteTitle: 'Delete Reservation',
     deleteMessage: 'Are you sure you want to delete this reservation?',
     changeParking: 'Change',
-    parkingId: 'ID',
+    parkingId: 'ID'
   },
 
   // Notifications
