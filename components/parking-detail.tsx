@@ -34,6 +34,7 @@ type Parking = {
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
   lock_slot_charge_policy?: string;
+  phone?: string;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
 };
@@ -130,6 +131,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   };
 
   const noSlotsAvailable = parking.available_slots === 0;
+  const noRatesToday = Object.keys(parking.today_rate_cents ?? {}).length === 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -158,7 +160,23 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
         </View>
       </View>
 
-      {Object.keys(parking.today_rate_cents ?? {}).length > 0 && (
+      {noRatesToday ? (
+        <View style={styles.closedCard}>
+          <View style={styles.closedAccent} />
+          <View style={styles.closedBody}>
+            <Text style={styles.closedTitle}>{t('parkingDetail.closedTitle')}</Text>
+            <Text style={styles.closedMessage}>{t('parkingDetail.closedMessage')}</Text>
+            {parking.phone ? (
+              <>
+                <Text style={styles.closedMessage}>{t('parkingDetail.closedMessagePhone')}</Text>
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${parking.phone}`)}>
+                  <Text style={styles.closedPhone}>{parking.phone}</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        </View>
+      ) : (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t('parkingDetail.todayRates')}</Text>
           {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => (
@@ -290,10 +308,10 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
         <TouchableOpacity
           style={[
             styles.reserveButton,
-            noSlotsAvailable && styles.reserveButtonDisabled,
+            (noSlotsAvailable || noRatesToday) && styles.reserveButtonDisabled,
           ]}
           onPress={handleReservePress}
-          disabled={noSlotsAvailable}
+          disabled={noSlotsAvailable || noRatesToday}
         >
           <Text style={styles.reserveButtonText}>
             {noSlotsAvailable ? t('parkingDetail.noSlotsAvailable') : t('parkingDetail.reserveSpot')}
@@ -407,6 +425,40 @@ function makeStyles(theme: AppTheme) {
       fontSize: 14,
       fontWeight: '700',
       color: '#6366f1',
+    },
+    closedCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    closedAccent: {
+      width: 4,
+      backgroundColor: '#8E8E93',
+    },
+    closedBody: {
+      flex: 1,
+      padding: 14,
+    },
+    closedTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    closedMessage: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 18,
+    },
+    closedPhone: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.tint,
+      marginTop: 8,
     },
     warningCard: {
       backgroundColor: theme.card,

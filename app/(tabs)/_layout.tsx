@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Car, ClipboardList, CreditCard, Home, User } from 'lucide-react-native';
+import { CalendarClock, ClipboardList, Home, User } from 'lucide-react-native';
 import { ActivityIndicator, View } from 'react-native';
 
 import ActiveReservationScreen from '@/components/active-reservation-screen';
@@ -60,26 +60,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="scheduled"
+        options={{
+          title: t('tabs.scheduled'),
+          tabBarIcon: ({ color, size }) => <CalendarClock color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="vehicles"
-        options={{
-          title: t('tabs.vehicles'),
-          tabBarIcon: ({ color, size }) => <Car color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="payments"
-        options={{
-          title: t('tabs.payments'),
-          tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="preferences" options={{ href: null }} />
+      <Tabs.Screen name="vehicles" options={{ href: null }} />
+      <Tabs.Screen name="payments" options={{ href: null }} />
       <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen name="home-tab" options={{ href: null }} />
       <Tabs.Screen name="parking-detail" options={{ href: null }} />

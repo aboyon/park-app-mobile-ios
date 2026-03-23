@@ -1,39 +1,25 @@
-import { LogOut, Moon, Smartphone, Sun, User } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Car, CreditCard, LogOut, Moon, Settings, Smartphone, Sun, User } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
-import { Picker } from '@react-native-picker/picker';
-
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale, type SupportedLocale } from '@/context/locale';
-import { useMe } from '@/context/me';
 import { type ThemePreference, useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
-
-const DISTANCE_OPTIONS: { value: number; label: string }[] = [
-  { value: 500,   label: '500 m' },
-  { value: 1000,  label: '1 km' },
-  { value: 3000,  label: '3 km' },
-  { value: 10000, label: '10 km' },
-  { value: 15000, label: '15 km' },
-];
 
 type UserData = {
   name: string;
   email: string;
-  notifiable_distance: number;
 };
 
 const THEME_OPTIONS: { value: ThemePreference; labelKey: string; Icon: typeof Sun }[] = [
@@ -48,8 +34,8 @@ const LANGUAGE_OPTIONS: { value: SupportedLocale }[] = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { token, logout } = useAuth();
-  const { refresh } = useMe();
   const theme = useAppTheme();
   const { themePreference, setThemePreference } = useTheme();
   const { t, locale, setLocale } = useLocale();
@@ -57,12 +43,6 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
-
-  const [name, setName] = useState('');
-  const [notifiableDistance, setNotifiableDistance] = useState<number>(500);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchProfile = useCallback(async () => {
@@ -72,8 +52,6 @@ export default function ProfileScreen() {
       });
       const data = await response.json();
       setUser(data);
-      setName(data.name);
-      setNotifiableDistance(data.notifiable_distance);
     } catch {
       setFetchError(t('profile.couldNotLoad'));
     } finally {
@@ -86,47 +64,8 @@ export default function ProfileScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setSaveSuccess(false);
-    setSaveError('');
     fetchProfile();
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveError('');
-    setSaveSuccess(false);
-    try {
-      const response = await fetch(`${API_BASE}/api/me`, {
-        method: 'PATCH',
-        headers: apiHeaders(token!),
-        body: JSON.stringify({
-          profile: {
-            name,
-            notifiable_distance: notifiableDistance,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setSaveError(data.message ?? t('profile.couldNotSave'));
-        return;
-      }
-
-      const data = await response.json();
-      setUser(data);
-      setSaveSuccess(true);
-      refresh();
-    } catch {
-      setSaveError(t('common.connectionError'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const isDirty =
-    user !== null &&
-    (name !== user.name || notifiableDistance !== user.notifiable_distance);
 
   if (loading) {
     return (
@@ -145,14 +84,9 @@ export default function ProfileScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.outer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
       <ScrollView
         style={styles.outer}
         contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
@@ -168,50 +102,39 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Profile section */}
-        <Text style={styles.sectionLabel}>{t('profile.sectionLabel')}</Text>
-        <View style={styles.card}>
-          <Text style={styles.label}>{t('profile.name')}</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={(v) => { setName(v); setSaveSuccess(false); }}
-            placeholder={t('profile.namePlaceholder')}
-            placeholderTextColor={theme.textMuted}
-            autoCapitalize="words"
-          />
-
-          <View style={styles.fieldDivider} />
-
-          <Text style={styles.label}>{t('profile.notificationDistance')}</Text>
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={notifiableDistance}
-              onValueChange={(value) => { setNotifiableDistance(value); setSaveSuccess(false); }}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-            >
-              {DISTANCE_OPTIONS.map(({ value, label }) => (
-                <Picker.Item key={value} label={label} value={value} />
-              ))}
-            </Picker>
-          </View>
+        {/* Account section */}
+        <Text style={styles.sectionLabel}>{t('profile.account')}</Text>
+        <View style={styles.accountCard}>
+          <TouchableOpacity
+            style={styles.accountRow}
+            onPress={() => router.navigate('/(tabs)/preferences')}
+            activeOpacity={0.7}
+          >
+            <Settings color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('profile.preferences')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.accountRowDivider} />
+          <TouchableOpacity
+            style={styles.accountRow}
+            onPress={() => router.navigate('/(tabs)/vehicles')}
+            activeOpacity={0.7}
+          >
+            <Car color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('tabs.vehicles')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.accountRowDivider} />
+          <TouchableOpacity
+            style={styles.accountRow}
+            onPress={() => router.navigate('/(tabs)/payments')}
+            activeOpacity={0.7}
+          >
+            <CreditCard color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('tabs.payments')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
         </View>
-
-        {saveError !== '' && <Text style={styles.errorText}>{saveError}</Text>}
-        {saveSuccess && <Text style={styles.successText}>{t('profile.changesSaved')}</Text>}
-
-        <TouchableOpacity
-          style={[styles.saveButton, (!isDirty || saving) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={!isDirty || saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>{t('profile.saveChanges')}</Text>
-          )}
-        </TouchableOpacity>
 
         {/* Appearance section */}
         <Text style={styles.sectionLabel}>{t('profile.appearance')}</Text>
@@ -265,7 +188,6 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
   );
 }
 
@@ -326,32 +248,6 @@ function makeStyles(theme: AppTheme) {
       padding: 16,
       marginBottom: 16,
     },
-    label: {
-      fontSize: 13,
-      color: theme.textMuted,
-      marginBottom: 6,
-    },
-    input: {
-      fontSize: 15,
-      color: theme.text,
-      paddingVertical: 4,
-    },
-    fieldDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.divider,
-      marginVertical: 12,
-    },
-    pickerWrapper: {
-      overflow: 'hidden',
-      marginTop: 2,
-    },
-    picker: {
-      color: theme.text,
-    },
-    pickerItem: {
-      fontSize: 15,
-      color: theme.text,
-    },
     appearanceHint: {
       fontSize: 13,
       color: theme.textMuted,
@@ -411,6 +307,34 @@ function makeStyles(theme: AppTheme) {
       fontSize: 14,
       textAlign: 'center',
       marginBottom: 10,
+    },
+    accountCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
+    accountRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    accountRowLabel: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    accountRowChevron: {
+      fontSize: 20,
+      color: theme.border,
+      lineHeight: 22,
+    },
+    accountRowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.divider,
+      marginLeft: 48,
     },
     logoutButton: {
       flexDirection: 'row',

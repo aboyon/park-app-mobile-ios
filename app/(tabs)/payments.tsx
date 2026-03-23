@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Star } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -116,6 +116,7 @@ function formatPaymentType(id: string): string {
 }
 
 export default function PaymentsScreen() {
+  const router = useRouter();
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -456,6 +457,9 @@ export default function PaymentsScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/(tabs)/profile')}>
+        <Text style={styles.backText}>{t('common.back')}</Text>
+      </TouchableOpacity>
       <View style={styles.header}>
         <Text style={styles.heading}>{t('payments.title')}</Text>
       </View>

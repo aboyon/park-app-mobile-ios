@@ -3,9 +3,10 @@ const es = {
   tabs: {
     home: 'Inicio',
     reservations: 'Reservas',
+    scheduled: 'Programadas',
     profile: 'Perfil',
     vehicles: 'Vehículos',
-    payments: 'Pagos',
+    payments: 'Metodos Pagos',
   },
 
   // Common
@@ -113,6 +114,8 @@ const es = {
       light: 'Claro',
       dark: 'Oscuro',
     },
+    account: 'CUENTA',
+    preferences: 'Preferencias',
     language: 'IDIOMA',
     languageLabel: 'Idioma',
     saveChanges: 'Guardar cambios',
@@ -238,6 +241,9 @@ const es = {
     noPaymentTitle: 'Sin método de pago',
     noPaymentMessage: 'Necesitás agregar un método de pago antes de reservar un lugar.',
     addPaymentMethod: 'Agregar método de pago',
+    closedTitle: 'Sin tarifas disponibles hoy',
+    closedMessage: 'No hay tarifas para hoy — parece que el estacionamiento está cerrado.',
+    closedMessagePhone: 'Si creés que es un error, podés llamarlos al:',
   },
 
   // Require Vehicle Screen
@@ -245,6 +251,34 @@ const es = {
     title: 'Agregar un vehículo',
     subtitle: 'Necesitás al menos un vehículo registrado para usar la app.',
     addVehicle: 'Agregar vehículo',
+  },
+
+  // Scheduled Reservations
+  scheduled: {
+    title: 'Programadas',
+    add: '+ Nueva',
+    empty: 'No hay reservas programadas',
+    addFirst: 'Programar una reserva',
+    sectionLabel: 'RESERVAS PROGRAMADAS',
+    createTitle: 'Programar un estacionamiento',
+    editTitle: 'Editar reserva programada',
+    sectionParking: 'ESTACIONAMIENTO',
+    sectionSchedule: 'HORARIO',
+    searchParkingPlaceholder: 'Buscar estacionamiento...',
+    noResults: 'Sin resultados',
+    startTime: 'Inicio',
+    endTime: 'Fin',
+    parkingRequired: 'Seleccioná un estacionamiento',
+    endAfterStart: 'El fin debe ser posterior al inicio',
+    couldNotLoad: 'No se pudieron cargar las reservas programadas',
+    couldNotSave: 'No se pudo guardar la reserva',
+    saveChanges: 'Guardar cambios',
+    create: 'Crear reserva',
+    delete: 'Eliminar reserva',
+    deleteTitle: 'Eliminar reserva',
+    deleteMessage: '¿Querés eliminar esta reserva?',
+    changeParking: 'Cambiar',
+    parkingId: 'ID',
   },
 
   // Notifications

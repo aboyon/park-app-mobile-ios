@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -54,6 +54,7 @@ const VEHICLE_ICON: Record<VehicleType, string> = {
 };
 
 export default function VehiclesScreen() {
+  const router = useRouter();
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
@@ -252,6 +253,9 @@ export default function VehiclesScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/(tabs)/profile')}>
+        <Text style={styles.backText}>{t('common.back')}</Text>
+      </TouchableOpacity>
       <View style={styles.header}>
         <Text style={styles.heading}>{t('vehicles.title')}</Text>
         <TouchableOpacity style={styles.addButton} onPress={openAdd}>

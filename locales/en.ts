@@ -3,6 +3,7 @@ const en = {
   tabs: {
     home: 'Home',
     reservations: 'Reservations',
+    scheduled: 'Scheduled',
     profile: 'Profile',
     vehicles: 'Vehicles',
     payments: 'Payments',
@@ -113,6 +114,8 @@ const en = {
       light: 'Light',
       dark: 'Dark',
     },
+    account: 'ACCOUNT',
+    preferences: 'Preferences',
     language: 'LANGUAGE',
     languageLabel: 'Language',
     saveChanges: 'Save Changes',
@@ -238,6 +241,9 @@ const en = {
     noPaymentTitle: 'No payment method',
     noPaymentMessage: 'You need to add a payment method before reserving a spot.',
     addPaymentMethod: 'Add Payment Method',
+    closedTitle: 'No rates available today',
+    closedMessage: "There are no rates for today — the parking seems to be closed.",
+    closedMessagePhone: "If you think this is an error, you can call them at:",
   },
 
   // Require Vehicle Screen
@@ -245,6 +251,34 @@ const en = {
     title: 'Add a Vehicle',
     subtitle: 'You need at least one vehicle registered before you can use the app.',
     addVehicle: 'Add Vehicle',
+  },
+
+  // Scheduled Reservations
+  scheduled: {
+    title: 'Scheduled',
+    add: '+ New',
+    empty: 'No scheduled reservations',
+    addFirst: 'Schedule a reservation',
+    sectionLabel: 'SCHEDULED RESERVATIONS',
+    createTitle: 'New Scheduled Reservation',
+    editTitle: 'Edit Scheduled Reservation',
+    sectionParking: 'PARKING',
+    sectionSchedule: 'SCHEDULE',
+    searchParkingPlaceholder: 'Search parking...',
+    noResults: 'No results found',
+    startTime: 'Start',
+    endTime: 'End',
+    parkingRequired: 'Please select a parking',
+    endAfterStart: 'End time must be after start time',
+    couldNotLoad: 'Could not load scheduled reservations',
+    couldNotSave: 'Could not save reservation',
+    saveChanges: 'Save Changes',
+    create: 'Create Reservation',
+    delete: 'Delete Reservation',
+    deleteTitle: 'Delete Reservation',
+    deleteMessage: 'Are you sure you want to delete this reservation?',
+    changeParking: 'Change',
+    parkingId: 'ID',
   },
 
   // Notifications
