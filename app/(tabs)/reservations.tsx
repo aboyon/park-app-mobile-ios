@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -32,6 +32,7 @@ function formatDate(iso: string) {
 }
 
 export default function ReservationsScreen() {
+  const router = useRouter();
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
@@ -101,6 +102,9 @@ export default function ReservationsScreen() {
         />
       }
     >
+      <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/(tabs)/profile')}>
+        <Text style={styles.backText}>{t('common.back')}</Text>
+      </TouchableOpacity>
       <Text style={styles.heading}>{t('reservations.title')}</Text>
 
       {reservations.length === 0 ? (
@@ -121,15 +125,9 @@ export default function ReservationsScreen() {
                   <TouchableOpacity style={styles.row} onPress={() => setSelected(item)} activeOpacity={0.7}>
                     <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
                     <View style={styles.rowInfo}>
-                      <Text style={styles.rowName}>{item.parking.name}</Text>
-                      <Text style={styles.rowDate}>{formatDate(item.start_time)}</Text>
+                      <Text style={styles.rowName} numberOfLines={1} ellipsizeMode="tail">{item.parking.name}</Text>
                       <Text style={styles.rowPlate}>{item.vehicle.license_plate}</Text>
-                    </View>
-                    <View style={styles.rowRight}>
-                      <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-                        <Text style={[styles.badgeText, { color: colors.text }]}>{statusLabel}</Text>
-                      </View>
-                      <Text style={styles.chevron}>›</Text>
+                      <Text style={styles.rowDate}>{formatDate(item.start_time)}</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -150,7 +148,7 @@ function makeStyles(theme: AppTheme) {
     },
     content: {
       paddingTop: 60,
-      paddingHorizontal: 20,
+      paddingHorizontal: 5,
       paddingBottom: 40,
     },
     centered: {
@@ -158,6 +156,14 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.pageBackground,
+    },
+    backButton: {
+      marginBottom: 12,
+      paddingHorizontal: 15,
+    },
+    backText: {
+      fontSize: 16,
+      color: theme.tint,
     },
     heading: {
       fontSize: 32,

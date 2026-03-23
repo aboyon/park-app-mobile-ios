@@ -24,7 +24,7 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ParkingResult = {
-  id: number;
+  parking_id: number;
   name: string;
   address: string;
 };
@@ -106,8 +106,8 @@ function DateTimeField({
 
   if (Platform.OS === 'ios') {
     return (
-      <View style={styles.dateRow}>
-        <Text style={styles.dateLabel}>{label}</Text>
+      <View style={styles.dateField}>
+        <Text style={styles.dateFieldLabel}>{label}</Text>
         <DateTimePicker
           value={value}
           mode="datetime"
@@ -140,12 +140,12 @@ function DateTimeField({
   return (
     <View>
       <TouchableOpacity
-        style={styles.dateRow}
+        style={styles.dateField}
         onPress={() => { setAndroidMode('date'); setShow(true); }}
         activeOpacity={0.7}
       >
-        <Text style={styles.dateLabel}>{label}</Text>
-        <Text style={styles.dateValue}>{formatDateTime(value)}</Text>
+        <Text style={styles.dateFieldLabel}>{label}</Text>
+        <Text style={styles.dateFieldValue}>{formatDateTime(value)}</Text>
       </TouchableOpacity>
       {show && (
         <DateTimePicker
@@ -181,6 +181,9 @@ export default function ScheduledScreen() {
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  // Parking display-only (not sent in payload)
+  const [selectedParkingAddress, setSelectedParkingAddress] = useState('');
+
   // Parking search state
   const [parkingQuery, setParkingQuery] = useState('');
   const [parkingResults, setParkingResults] = useState<ParkingResult[]>([]);
@@ -212,13 +215,13 @@ export default function ScheduledScreen() {
   // Parking search (debounced)
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
-    if (!parkingQuery.trim()) { setParkingResults([]); return; }
+    if (parkingQuery.trim().length <= 4) { setParkingResults([]); return; }
 
     searchDebounce.current = setTimeout(async () => {
       setParkingSearching(true);
       try {
         const res = await fetch(
-          `${API_BASE}/api/parkings?q=${encodeURIComponent(parkingQuery.trim())}`,
+          `${API_BASE}/api/find-parking?q=${encodeURIComponent(parkingQuery.trim())}`,
           { headers: apiHeaders(token!) },
         );
         if (res.ok) setParkingResults(await res.json());
@@ -234,6 +237,7 @@ export default function ScheduledScreen() {
 
   const openCreate = () => {
     setForm(blankForm());
+    setSelectedParkingAddress('');
     setParkingQuery('');
     setParkingResults([]);
     setSaveError('');
@@ -248,6 +252,7 @@ export default function ScheduledScreen() {
       start_time: new Date(r.start_time),
       end_time: new Date(r.end_time),
     });
+    setSelectedParkingAddress(r.parking?.address ?? '');
     setParkingQuery('');
     setParkingResults([]);
     setSaveError('');
@@ -258,7 +263,8 @@ export default function ScheduledScreen() {
   const closeForm = () => { setIsCreating(false); setEditing(null); };
 
   const selectParking = (p: ParkingResult) => {
-    setForm(prev => ({ ...prev, parking_id: p.id, parking_name: p.name }));
+    setSelectedParkingAddress(p.address);
+    setForm(prev => ({ ...prev, parking_id: p.parking_id, parking_name: p.name }));
     setParkingQuery('');
     setParkingResults([]);
   };
@@ -281,7 +287,8 @@ export default function ScheduledScreen() {
         headers: apiHeaders(token!),
         body: JSON.stringify({
           scheduled_reservation: {
-            parking_id: form.parking_id,
+            scheduleable_id: form.parking_id,
+            scheduleable_type: 'Parking',
             start_time: form.start_time.toISOString(),
             end_time: form.end_time.toISOString(),
           },
@@ -359,7 +366,9 @@ export default function ScheduledScreen() {
               <View style={styles.selectedParking}>
                 <View style={styles.selectedParkingInfo}>
                   <Text style={styles.selectedParkingName}>{form.parking_name}</Text>
-                  <Text style={styles.selectedParkingHint}>{t('scheduled.parkingId')}: {form.parking_id}</Text>
+                  {selectedParkingAddress !== '' && (
+                    <Text style={styles.selectedParkingHint}>{selectedParkingAddress}</Text>
+                  )}
                 </View>
                 <TouchableOpacity
                   style={styles.changeParkingButton}
@@ -387,7 +396,7 @@ export default function ScheduledScreen() {
                 {parkingResults.length > 0 && (
                   <View>
                     {parkingResults.map((p, index) => (
-                      <View key={p.id}>
+                      <View key={p.parking_id}>
                         {index > 0 && <View style={styles.groupDivider} />}
                         <TouchableOpacity
                           style={styles.searchResultRow}
@@ -404,7 +413,7 @@ export default function ScheduledScreen() {
                     ))}
                   </View>
                 )}
-                {parkingQuery.trim().length > 0 && !parkingSearching && parkingResults.length === 0 && (
+                {parkingQuery.trim().length > 4 && !parkingSearching && parkingResults.length === 0 && (
                   <View style={styles.searchEmptyRow}>
                     <Text style={styles.searchEmptyText}>{t('scheduled.noResults')}</Text>
                   </View>
@@ -698,18 +707,24 @@ function makeStyles(theme: AppTheme) {
     },
     changeParkingText: { fontSize: 12, color: theme.tint, fontWeight: '600' },
 
-    // ── Date/time rows ──
-    // On iOS the compact picker is right-aligned natively; on Android we show a text value.
-    dateRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    // ── Date/time fields ──
+    dateField: {
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      minHeight: 52,
+      paddingVertical: 14,
     },
-    dateLabel: { fontSize: 15, color: theme.text, flex: 1 },
-    dateValue: { fontSize: 15, color: theme.tint, fontWeight: '500' },
+    dateFieldLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    },
+    dateFieldValue: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: theme.text,
+    },
 
     // ── Buttons ──
     submitButton: {

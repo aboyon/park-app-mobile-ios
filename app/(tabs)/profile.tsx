@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Car, CreditCard, LogOut, Moon, Settings, Smartphone, Sun, User } from 'lucide-react-native';
+import { Car, ClipboardList, CreditCard, LogOut, Moon, Settings, Smartphone, Sun, User } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,7 +14,7 @@ import {
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale, type SupportedLocale } from '@/context/locale';
-import { type ThemePreference, useTheme } from '@/context/theme';
+import { useTheme, type ThemePreference } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type UserData = {
@@ -117,6 +117,16 @@ export default function ProfileScreen() {
           <View style={styles.accountRowDivider} />
           <TouchableOpacity
             style={styles.accountRow}
+            onPress={() => router.navigate('/(tabs)/reservations')}
+            activeOpacity={0.7}
+          >
+            <ClipboardList color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('tabs.reservations')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.accountRowDivider} />
+          <TouchableOpacity
+            style={styles.accountRow}
             onPress={() => router.navigate('/(tabs)/vehicles')}
             activeOpacity={0.7}
           >
@@ -204,7 +214,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     container: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 8,
       paddingTop: 60,
       paddingBottom: 40,
     },

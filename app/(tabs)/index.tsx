@@ -82,7 +82,7 @@ export default function IndexScreen() {
       const response = await fetch(url, { headers: apiHeaders(token!) });
       const data = await response.json();
       setParkings(data);
-      setStatus(t('home.foundParkings', { count: data.length }));
+      setStatus(data.length > 0 ? t('home.foundParkings', { count: data.length }) : '');
     } catch {
       setStatus(t('home.couldNotFetch'));
     }
@@ -119,8 +119,8 @@ export default function IndexScreen() {
           if (speedKmh > MIN_DRIVING_SPEED_KMH) {
             fetchNearbyParkings(latitude, longitude);
           } else {
-            setStatus(t('home.notDriving'));
             setParkings([]);
+            setStatus('');
           }
         }
       );
@@ -143,7 +143,13 @@ export default function IndexScreen() {
         <Text style={styles.title}>{t('home.title')}</Text>
       </View>
 
-      <Text style={styles.statusText}>{status}{speed !== null ? ` · ${speed} km/h` : ''}</Text>
+      {/* Speed indicator — fixed top-right overlay */}
+      <View style={styles.speedOverlay}>
+        <Text style={styles.speedNumber}>{speed !== null ? String(Math.max(0, speed)) : '—'}</Text>
+        <Text style={styles.speedUnit}>km/h</Text>
+      </View>
+
+      {status !== '' && <Text style={styles.statusText}>{status}</Text>}
 
       {isNotDriving && (
         <TouchableOpacity
@@ -168,6 +174,9 @@ export default function IndexScreen() {
       )}
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {parkings.length === 0 && (
+          <Text style={styles.emptyText}>{t('home.noParkingsNearby')}</Text>
+        )}
         {parkings.length > 0 && (
           <View style={styles.groupCard}>
             {parkings.map((parking, index) => {
@@ -229,6 +238,27 @@ function makeStyles(theme: AppTheme) {
       fontWeight: 'bold',
       color: theme.text,
     },
+    speedOverlay: {
+      position: 'absolute',
+      bottom: 24,
+      right: 15,
+      alignItems: 'flex-end',
+      zIndex: 10,
+    },
+    speedNumber: {
+      fontSize: 48,
+      fontWeight: 'bold',
+      color: theme.text,
+      fontVariant: ['tabular-nums'],
+      lineHeight: 52,
+      textAlign: 'right',
+    },
+    speedUnit: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.textMuted,
+      textAlign: 'right',
+    },
     refreshButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -254,7 +284,7 @@ function makeStyles(theme: AppTheme) {
       fontSize: 13,
       color: theme.textMuted,
       paddingHorizontal: 15,
-      marginBottom: 14,
+      marginBottom: 10,
     },
     sectionLabel: {
       fontSize: 12,
@@ -348,6 +378,12 @@ function makeStyles(theme: AppTheme) {
       fontSize: 20,
       color: theme.border,
       lineHeight: 22,
+    },
+    emptyText: {
+      fontSize: 15,
+      color: theme.textMuted,
+      textAlign: 'center',
+      marginTop: 40,
     },
   });
 }

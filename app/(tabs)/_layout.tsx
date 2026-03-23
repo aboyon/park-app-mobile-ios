@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { CalendarClock, ClipboardList, Home, User } from 'lucide-react-native';
+import { CalendarClock, Home, User } from 'lucide-react-native';
 import { ActivityIndicator, View } from 'react-native';
 
 import ActiveReservationScreen from '@/components/active-reservation-screen';
@@ -52,13 +52,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="reservations"
-        options={{
-          title: t('tabs.reservations'),
-          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="reservations" options={{ href: null }} />
       <Tabs.Screen
         name="scheduled"
         options={{

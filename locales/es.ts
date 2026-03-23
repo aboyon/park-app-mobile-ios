@@ -2,8 +2,8 @@ const es = {
   // Tabs
   tabs: {
     home: 'Inicio',
-    reservations: 'Reservas',
-    scheduled: 'Programadas',
+    reservations: 'Historial',
+    scheduled: 'Reservas',
     profile: 'Perfil',
     vehicles: 'Vehículos',
     payments: 'Metodos Pagos',
@@ -63,12 +63,14 @@ const es = {
     availableNow: 'DISPONIBLES AHORA',
     flexible: 'Flexible',
     strict: 'Estricto',
+    drivingAt: 'Estás manejando a',
+    noParkingsNearby: 'No hay estacionamientos disponibles cerca',
   },
 
   // Reservations list
   reservations: {
-    title: 'Mis reservas',
-    sectionLabel: 'RESERVAS',
+    title: 'Historial',
+    sectionLabel: 'HISTORIAL',
     empty: 'No hay reservas aún',
     couldNotLoad: 'No se pudieron cargar las reservas',
     status: {
@@ -255,11 +257,11 @@ const es = {
 
   // Scheduled Reservations
   scheduled: {
-    title: 'Programadas',
+    title: 'Reservas',
     add: '+ Nueva',
     empty: 'No hay reservas programadas',
     addFirst: 'Programar una reserva',
-    sectionLabel: 'RESERVAS PROGRAMADAS',
+    sectionLabel: 'RESERVAS',
     createTitle: 'Programar un estacionamiento',
     editTitle: 'Editar reserva programada',
     sectionParking: 'ESTACIONAMIENTO',

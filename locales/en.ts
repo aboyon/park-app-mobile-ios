@@ -2,8 +2,8 @@ const en = {
   // Tabs
   tabs: {
     home: 'Home',
-    reservations: 'Reservations',
-    scheduled: 'Scheduled',
+    reservations: 'History',
+    scheduled: 'Reservations',
     profile: 'Profile',
     vehicles: 'Vehicles',
     payments: 'Payments',
@@ -63,12 +63,14 @@ const en = {
     availableNow: 'AVAILABLE NOW',
     flexible: 'Flexible',
     strict: 'Strict',
+    drivingAt: "You're driving at",
+    noParkingsNearby: 'No available parkings nearby',
   },
 
   // Reservations list
   reservations: {
-    title: 'My Reservations',
-    sectionLabel: 'RESERVATIONS',
+    title: 'History',
+    sectionLabel: 'HISTORY',
     empty: 'No reservations yet',
     couldNotLoad: 'Could not load reservations',
     status: {
@@ -255,12 +257,12 @@ const en = {
 
   // Scheduled Reservations
   scheduled: {
-    title: 'Scheduled',
+    title: 'Reservations',
     add: '+ New',
     empty: 'No scheduled reservations',
     addFirst: 'Schedule a reservation',
-    sectionLabel: 'SCHEDULED RESERVATIONS',
-    createTitle: 'New Scheduled Reservation',
+    sectionLabel: 'RESERVATIONS',
+    createTitle: 'Reserve a parking',
     editTitle: 'Edit Scheduled Reservation',
     sectionParking: 'PARKING',
     sectionSchedule: 'SCHEDULE',

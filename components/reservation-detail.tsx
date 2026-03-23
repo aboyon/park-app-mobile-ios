@@ -318,7 +318,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     content: {
-      padding: 20,
+      padding: 8,
       paddingTop: 60,
       paddingBottom: 40,
     },

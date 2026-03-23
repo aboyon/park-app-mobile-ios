@@ -348,7 +348,7 @@ function makeStyles(theme: AppTheme) {
       fontSize: 15,
     },
     list: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 8,
       paddingBottom: 20,
       gap: 12,
     },
