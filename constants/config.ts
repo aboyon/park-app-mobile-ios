@@ -1,4 +1,4 @@
-export const API_BASE = 'https://parkapp-a6c4d3dbb450.herokuapp.com'
+export const API_BASE = 'https://parkapp-a6c4d3dbb450.herokuapp.com';
 export const MP_PUBLIC_KEY = 'TEST-81b68f33-5310-49be-92b2-287dec588487'
 export const PARKAPP_API_VERSION = 'application/vnd.parkapp.v1+json'
 

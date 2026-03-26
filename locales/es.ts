@@ -223,6 +223,7 @@ const es = {
     cancelReservation: 'Cancelar reserva',
     couldNotCancel: 'No se pudo cancelar la reserva',
     couldNotStart: 'No se pudo iniciar la reserva',
+    qrHint: 'Mostrá este código en la entrada del estacionamiento',
   },
 
   // Parking Detail

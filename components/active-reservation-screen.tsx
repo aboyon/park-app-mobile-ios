@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 import { API_BASE, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
@@ -65,6 +66,7 @@ export default function ActiveReservationScreen({
   const [confirmingStart, setConfirmingStart] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [qrSize, setQrSize] = useState(0);
 
   const isInProgress = reservation.status === 'in_progress';
   const busy = cancelling || starting;
@@ -186,6 +188,21 @@ export default function ActiveReservationScreen({
         <Text style={styles.parkingName}>{reservation.parking.name}</Text>
         <Text style={styles.parkingAddress}>{reservation.parking.address}</Text>
 
+        <View
+          style={styles.qrContainer}
+          onLayout={(e) => setQrSize(e.nativeEvent.layout.width)}
+        >
+          {qrSize > 0 && (
+            <QRCode
+              value={reservation.id}
+              size={qrSize}
+              backgroundColor="#ffffff"
+              color="#000000"
+            />
+          )}
+        </View>
+        <Text style={styles.qrHint}>{t('activeReservation.qrHint')}</Text>
+
         <View style={styles.divider} />
 
         <View style={styles.row}>
@@ -303,15 +320,30 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     container: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 15,
       paddingTop: 60,
       paddingBottom: 40,
     },
     heading: {
-      fontSize: 32,
+      fontSize: 25,
       fontWeight: 'bold',
       color: theme.text,
       marginBottom: 16,
+    },
+    qrContainer: {
+      width: '100%',
+      backgroundColor: '#ffffff',
+      borderRadius: 8,
+      marginTop: 16,
+      overflow: 'hidden',
+    },
+    qrHint: {
+      fontSize: 12,
+      color: '#8E8E93',
+      marginTop: 10,
+      marginBottom: 16,
+      textAlign: 'center',
+      letterSpacing: 0.3,
     },
     card: {
       backgroundColor: theme.card,

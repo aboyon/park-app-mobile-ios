@@ -41,7 +41,7 @@ type DebitDetails = {
 };
 
 type PaymentMethod = {
-  id: number;
+  id: string;
   payment_method_render_type: PaymentMethodType;
   is_default: boolean;
   display_name?: string;
@@ -477,7 +477,7 @@ export default function PaymentsScreen() {
       ) : (
         <FlatList
           data={methods}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => fetchMethods({ refresh: true })} />

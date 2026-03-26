@@ -23,7 +23,7 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 type VehicleType = 'car' | 'truck' | 'motorcycle' | 'pickup' | 'suv';
 
 type Vehicle = {
-  id: number;
+  id: string;
   license_plate: string;
   vehicle_type: VehicleType;
   is_default: boolean;
@@ -273,7 +273,7 @@ export default function VehiclesScreen() {
       ) : (
         <FlatList
           data={vehicles}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl

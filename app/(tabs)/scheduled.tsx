@@ -25,13 +25,13 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ParkingResult = {
-  parking_id: number;
+  parking_id: string;
   name: string;
   address: string;
 };
 
 type Product = {
-  id: number;
+  id: string;
   name: string;
   address: string;
   phone?: string;
@@ -40,7 +40,7 @@ type Product = {
 };
 
 type ScheduledReservation = {
-  id: number;
+  id: string;
   start_time: string;
   end_time: string;
   status?: string;
@@ -48,7 +48,7 @@ type ScheduledReservation = {
 };
 
 type FormState = {
-  parking_id: number | null;
+  parking_id: string | null;
   parking_name: string;
   start_time: Date;
   end_time: Date;

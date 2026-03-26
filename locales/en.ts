@@ -223,6 +223,7 @@ const en = {
     cancelReservation: 'Cancel Reservation',
     couldNotCancel: 'Could not cancel reservation',
     couldNotStart: 'Could not start reservation',
+    qrHint: 'Show this code at the parking entrance',
   },
 
   // Parking Detail

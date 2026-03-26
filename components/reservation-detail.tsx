@@ -17,7 +17,7 @@ import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export type Payment = {
-  id: number;
+  id: string;
   amount_cents: number;
   amount_currency: string;
   status: string;
@@ -28,7 +28,7 @@ export type Payment = {
 };
 
 export type Reservation = {
-  id: number;
+  id: string;
   start_time: string;
   end_time: string | null;
   status: string;

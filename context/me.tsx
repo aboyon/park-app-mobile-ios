@@ -15,13 +15,13 @@ export type Rate = {
 };
 
 export type ActiveReservation = {
-  id: number;
+  id: string;
   status: string;
   start_time: string;
   end_time: string | null;
   amount_due: number;
   parking: {
-    id: number;
+    id: string;
     name: string;
     address: string;
     keep_slot_open_minutes?: number;
@@ -35,7 +35,7 @@ export type ActiveReservation = {
 };
 
 export type Vehicle = {
-  id: number;
+  id: string;
   license_plate: string;
   vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
   is_default: boolean;

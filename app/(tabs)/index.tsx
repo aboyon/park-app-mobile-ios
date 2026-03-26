@@ -16,7 +16,7 @@ type ParkingRate = {
 };
 
 type Vehicle = {
-  id: number;
+  id: string;
   license_plate: string;
   vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
   is_default: boolean;
@@ -31,7 +31,7 @@ type VehicleRate = {
 type VehicleRates = Record<string, VehicleRate>;
 
 type Parking = {
-  id: number;
+  id: string;
   name: string;
   address: string;
   latitude: number;
