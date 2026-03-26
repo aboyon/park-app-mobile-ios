@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { CheckCircle2, Clock, X } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import 'react-native-reanimated';
@@ -47,7 +48,12 @@ function NotificationOverlay() {
   return (
     <View style={styles.overlay}>
       <View style={styles.alertBox}>
-        <Text style={styles.alertIcon}>{isPayment ? '✅' : isExpired ? '⏰' : '✕'}</Text>
+        {isPayment
+          ? <CheckCircle2 color="#15803d" size={36} style={styles.alertIcon} />
+          : isExpired
+            ? <Clock color="#0284c7" size={36} style={styles.alertIcon} />
+            : <X color="#ff3b30" size={36} style={styles.alertIcon} />
+        }
         <Text style={styles.alertMessage}>{message}</Text>
       </View>
     </View>
@@ -80,7 +86,6 @@ function makeOverlayStyles(theme: AppTheme, isDark: boolean, isExpired: boolean,
       elevation: 8,
     },
     alertIcon: {
-      fontSize: 36,
       marginBottom: 12,
     },
     alertMessage: {

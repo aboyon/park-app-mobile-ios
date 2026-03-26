@@ -1,3 +1,4 @@
+import { Bike, Car, Check, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,11 +20,13 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type VehicleType = 'car' | 'truck' | 'motorcycle';
 
-const VEHICLE_TYPES: { value: VehicleType; icon: string }[] = [
-  { value: 'car', icon: '🚗' },
-  { value: 'truck', icon: '🚚' },
-  { value: 'motorcycle', icon: '🏍️' },
-];
+type LucideIcon = typeof Car;
+const VEHICLE_TYPE_ICON: Record<VehicleType, LucideIcon> = {
+  car: Car,
+  truck: Truck,
+  motorcycle: Bike,
+};
+const VEHICLE_TYPES: VehicleType[] = ['car', 'truck', 'motorcycle'];
 
 export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => Promise<void> }) {
   const { token } = useAuth();
@@ -105,19 +108,22 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
 
         <Text style={styles.sectionHeader}>{t('vehicles.sectionType')}</Text>
         <View style={styles.groupCard}>
-          {VEHICLE_TYPES.map(({ value, icon }, index) => (
-            <View key={value}>
-              {index > 0 && <View style={styles.groupDivider} />}
-              <TouchableOpacity
-                style={styles.typeRow}
-                onPress={() => setVehicleType(value)}
-              >
-                <Text style={styles.typeIcon}>{icon}</Text>
-                <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
-                {vehicleType === value && <Text style={styles.typeCheck}>✓</Text>}
-              </TouchableOpacity>
-            </View>
-          ))}
+          {VEHICLE_TYPES.map((value, index) => {
+            const VehicleIcon = VEHICLE_TYPE_ICON[value];
+            return (
+              <View key={value}>
+                {index > 0 && <View style={styles.groupDivider} />}
+                <TouchableOpacity
+                  style={styles.typeRow}
+                  onPress={() => setVehicleType(value)}
+                >
+                  <VehicleIcon color={theme.textMuted} size={20} style={styles.typeIcon} />
+                  <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
+                  {vehicleType === value && <Check color={theme.tint} size={16} />}
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
 
         {error !== '' && <Text style={styles.errorText}>{error}</Text>}
@@ -214,18 +220,12 @@ function makeStyles(theme: AppTheme) {
       minHeight: 52,
     },
     typeIcon: {
-      fontSize: 20,
       marginRight: 12,
     },
     typeLabel: {
       fontSize: 15,
       color: theme.text,
       flex: 1,
-    },
-    typeCheck: {
-      fontSize: 16,
-      color: theme.tint,
-      fontWeight: '600',
     },
     errorText: {
       color: '#ff3b30',

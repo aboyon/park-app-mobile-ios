@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Star } from 'lucide-react-native';
+import { Banknote, Check, CreditCard, Star } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -101,8 +101,10 @@ function methodSubtitle(m: PaymentMethod): string {
   return account_holder + ' - ' + bank_name;
 }
 
-function methodIcon(m: PaymentMethod): string {
-  return m.payment_method_render_type === 'credit_card' ? '💳' : '🏦';
+function MethodIcon({ m, color, size }: { m: PaymentMethod; color: string; size: number }) {
+  return m.payment_method_render_type === 'credit_card'
+    ? <CreditCard color={color} size={size} />
+    : <Banknote color={color} size={size} />;
 }
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
@@ -132,8 +134,8 @@ export default function PaymentsScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
 
   const fetchMethods = useCallback(
     async ({ refresh = false } = {}) => {
@@ -291,10 +293,12 @@ export default function PaymentsScreen() {
                   style={styles.typeRow}
                   onPress={() => setForm({ ...BLANK_FORM, payment_method_render_type: value })}
                 >
-                  <Text style={styles.typeIcon}>{value === 'credit_card' ? '💳' : '🏦'}</Text>
+                  {value === 'credit_card'
+                    ? <CreditCard color={theme.textMuted} size={20} style={styles.typeIcon} />
+                    : <Banknote color={theme.textMuted} size={20} style={styles.typeIcon} />}
                   <Text style={styles.typeLabel}>{t(`payments.types.${value}`)}</Text>
                   {form.payment_method_render_type === value && (
-                    <Text style={styles.typeCheck}>✓</Text>
+                    <Check color={theme.tint} size={16} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -489,7 +493,7 @@ export default function PaymentsScreen() {
             return (
             <View style={[styles.card, item.is_default && styles.cardDefault]}>
               <View style={styles.cardMain}>
-                <Text style={styles.cardIcon}>{methodIcon(item)}</Text>
+                <MethodIcon m={item} color={theme.tint} size={22} />
                 <View style={styles.cardInfo}>
                   <View style={styles.cardTitleRow}>
                     <Text style={styles.cardNumber}>{item.display_name}</Text>

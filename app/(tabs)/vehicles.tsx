@@ -1,4 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Bike, Car, Check, Truck } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -37,21 +38,17 @@ type FormState = {
 
 const BLANK_FORM: FormState = { license_plate: '', vehicle_type: 'car', is_default: false };
 
-const VEHICLE_TYPES: { value: VehicleType; icon: string }[] = [
-  { value: 'car',        icon: '🚗' },
-  { value: 'truck',      icon: '🚚' },
-  { value: 'pickup',     icon: '🛻' },
-  { value: 'suv',        icon: '🚙' },
-  { value: 'motorcycle', icon: '🏍️' },
-];
+type LucideIcon = typeof Car;
 
-const VEHICLE_ICON: Record<VehicleType, string> = {
-  car:        '🚗',
-  truck:      '🚚',
-  pickup:     '🛻',
-  suv:        '🚙',
-  motorcycle: '🏍️',
+const VEHICLE_TYPE_ICON: Record<VehicleType, LucideIcon> = {
+  car:        Car,
+  truck:      Truck,
+  pickup:     Truck,
+  suv:        Car,
+  motorcycle: Bike,
 };
+
+const VEHICLE_TYPES: VehicleType[] = ['car', 'truck', 'pickup', 'suv', 'motorcycle'];
 
 export default function VehiclesScreen() {
   const router = useRouter();
@@ -195,21 +192,24 @@ export default function VehiclesScreen() {
 
           <Text style={styles.sectionHeader}>{t('vehicles.sectionType')}</Text>
           <View style={styles.groupCard}>
-            {VEHICLE_TYPES.map(({ value, icon }, index) => (
-              <View key={value}>
-                {index > 0 && <View style={styles.groupDivider} />}
-                <TouchableOpacity
-                  style={styles.typeRow}
-                  onPress={() => setForm({ ...form, vehicle_type: value })}
-                >
-                  <Text style={styles.typeIcon}>{icon}</Text>
-                  <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
-                  {form.vehicle_type === value && (
-                    <Text style={styles.typeCheck}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))}
+            {VEHICLE_TYPES.map((value, index) => {
+              const VehicleIcon = VEHICLE_TYPE_ICON[value];
+              return (
+                <View key={value}>
+                  {index > 0 && <View style={styles.groupDivider} />}
+                  <TouchableOpacity
+                    style={styles.typeRow}
+                    onPress={() => setForm({ ...form, vehicle_type: value })}
+                  >
+                    <VehicleIcon color={theme.textMuted} size={20} style={styles.typeIcon} />
+                    <Text style={styles.typeLabel}>{t(`vehicles.types.${value}`)}</Text>
+                    {form.vehicle_type === value && (
+                      <Check color={theme.tint} size={16} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
 
           {saveError !== '' && <Text style={styles.errorText}>{saveError}</Text>}
@@ -284,7 +284,7 @@ export default function VehiclesScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} onPress={() => openEdit(item)}>
               <View style={styles.cardLeft}>
-                <Text style={styles.vehicleIcon}>{VEHICLE_ICON[item.vehicle_type]}</Text>
+                {(() => { const VehicleIcon = VEHICLE_TYPE_ICON[item.vehicle_type]; return <VehicleIcon color={theme.textMuted} size={28} />; })()}
                 <View>
                   <Text style={styles.licensePlate}>{item.license_plate}</Text>
                   <Text style={styles.vehicleType}>{t(`vehicles.types.${item.vehicle_type}`)}</Text>
@@ -372,7 +372,8 @@ function makeStyles(theme: AppTheme) {
       gap: 14,
     },
     vehicleIcon: {
-      fontSize: 28,
+      width: 28,
+      height: 28,
     },
     licensePlate: {
       fontSize: 16,
@@ -486,18 +487,12 @@ function makeStyles(theme: AppTheme) {
       minHeight: 52,
     },
     typeIcon: {
-      fontSize: 20,
       marginRight: 12,
     },
     typeLabel: {
       fontSize: 15,
       color: theme.text,
       flex: 1,
-    },
-    typeCheck: {
-      fontSize: 16,
-      color: theme.tint,
-      fontWeight: '600',
     },
     errorText: {
       color: '#ff3b30',

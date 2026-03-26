@@ -1,3 +1,4 @@
+import { CheckCircle2, Clock, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,10 +50,11 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   cancelled: { bg: '#fff1f0', text: '#ff3b30' },
 };
 
-const PAYMENT_STATUS_ICONS: Record<string, { bg: string; text: string; icon: string }> = {
-  completed: { bg: '#f0fdf4', text: '#15803d', icon: '✅' },
-  pending:   { bg: '#fffbeb', text: '#d97706', icon: '⏳' },
-  failed:    { bg: '#fff1f0', text: '#ff3b30', icon: '❌' },
+type LucideIcon = typeof CheckCircle2;
+const PAYMENT_STATUS_ICONS: Record<string, { bg: string; text: string; icon: LucideIcon }> = {
+  completed: { bg: '#f0fdf4', text: '#15803d', icon: CheckCircle2 },
+  pending:   { bg: '#fffbeb', text: '#d97706', icon: Clock },
+  failed:    { bg: '#fff1f0', text: '#ff3b30', icon: XCircle },
 };
 
 function formatDate(iso: string) {
@@ -107,7 +109,7 @@ function PaymentDetailModal({
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* hero section */}
           <View style={styles.sheetHero}>
-            <Text style={styles.sheetStatusIcon}>{ps.icon}</Text>
+            <ps.icon color={ps.text} size={48} />
             <Text style={styles.sheetAmount}>
               {formatAmount(payment.amount_cents, payment.amount_currency)}
             </Text>
@@ -259,7 +261,7 @@ export default function ReservationDetail({
                 activeOpacity={0.7}
               >
                 <View style={[styles.paymentIconWrap, { backgroundColor: ps.bg }]}>
-                  <Text style={styles.paymentIcon}>{ps.icon}</Text>
+                  <ps.icon color={ps.text} size={18} />
                 </View>
                 <View style={styles.paymentItemInfo}>
                   <Text style={styles.paymentItemProduct} numberOfLines={1}>{p.product}</Text>
@@ -411,7 +413,7 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    paymentIcon: { fontSize: 18 },
+
     paymentItemInfo: { flex: 1 },
     paymentItemProduct: { fontSize: 14, fontWeight: '600', color: theme.text },
     paymentItemMethod: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
@@ -451,7 +453,7 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 24,
       gap: 8,
     },
-    sheetStatusIcon: { fontSize: 48 },
+
     sheetAmount: {
       fontSize: 34,
       fontWeight: '800',

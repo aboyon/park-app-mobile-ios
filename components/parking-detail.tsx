@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { Bike, Car, Check, CreditCard, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -23,6 +24,8 @@ type VehicleRate = {
 
 type VehicleRates = Record<string, VehicleRate>;
 
+type ParkingMethod = 'self' | 'parking_attendance' | 'both';
+
 type Parking = {
   id: string;
   name: string;
@@ -31,19 +34,23 @@ type Parking = {
   longitude: number;
   distance: number;
   available_slots: number;
+  available?: boolean;
   keep_slot_open_minutes: number;
   rate_policy_strategy: string;
   lock_slot_charge_policy?: string;
   phone?: string;
+  parking_method?: ParkingMethod;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
 };
 
-const VEHICLE_RATE_ICON: Record<string, string> = {
-  car: '🚗',
-  truck: '🚚',
-  motorcycle: '🏍️',
-  pickup: '🛻',
+type LucideIcon = typeof Car;
+const VEHICLE_RATE_ICON: Record<string, LucideIcon> = {
+  car: Car,
+  truck: Truck,
+  motorcycle: Bike,
+  pickup: Truck,
+  suv: Car,
 };
 
 function formatRate(cents: number) {
@@ -130,8 +137,10 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
     }
   };
 
-  const noSlotsAvailable = parking.available_slots === 0;
+  const receivingVehicles = parking.available_slots <= 0 && parking.available === true;
+  const noSlotsAvailable = parking.available_slots <= 0 && !receivingVehicles;
   const noRatesToday = Object.keys(parking.today_rate_cents ?? {}).length === 0;
+  const needsKey = parking.parking_method === 'parking_attendance' || parking.parking_method === 'both';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -148,17 +157,35 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
 
         <View style={styles.divider} />
 
-        <View style={styles.row}>
-          <Text style={styles.metaLabel}>{t('parkingDetail.availableSlots')}</Text>
-          <Text style={[styles.metaValue, noSlotsAvailable && styles.noSlots]}>
-            {parking.available_slots}
-          </Text>
-        </View>
+        {receivingVehicles ? (
+          <Text style={styles.receivingVehicles}>{t('parkingDetail.receivingVehicles')}</Text>
+        ) : (
+          <View style={styles.row}>
+            <Text style={styles.metaLabel}>{t('parkingDetail.availableSlots')}</Text>
+            <Text style={[styles.metaValue, noSlotsAvailable && styles.noSlots]}>
+              {parking.available_slots}
+            </Text>
+          </View>
+        )}
+        {parking.parking_method && (
+          <View style={styles.row}>
+            <Text style={styles.metaValue}>{t(`parkingDetail.parkingMethod_${parking.parking_method}`)}</Text>
+          </View>
+        )}
         <View style={styles.row}>
           <Text style={styles.metaLabel}>{t('parkingDetail.reservationExpires')}</Text>
           <Text style={styles.metaValue}>{parking.keep_slot_open_minutes} {t('parkingDetail.min')}</Text>
         </View>
       </View>
+
+      {needsKey && (
+        <View style={styles.keyNoteCard}>
+          <View style={styles.keyNoteAccent} />
+          <View style={styles.keyNoteBody}>
+            <Text style={styles.keyNoteText}>{t('parkingDetail.keyNote')}</Text>
+          </View>
+        </View>
+      )}
 
       {noRatesToday ? (
         <View style={styles.closedCard}>
@@ -179,15 +206,18 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       ) : (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t('parkingDetail.todayRates')}</Text>
-          {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => (
+          {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => {
+            const RateIcon = VEHICLE_RATE_ICON[type] ?? Car;
+            return (
             <View key={type} style={[styles.rateRow, i < arr.length - 1 && styles.rateRowBorder]}>
-              <Text style={styles.rateIcon}>{VEHICLE_RATE_ICON[type] ?? '🚘'}</Text>
+              <RateIcon color={theme.textMuted} size={18} style={styles.rateIcon} />
               <Text style={styles.rateVehicle}>
                 {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
               </Text>
               <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
             </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -222,7 +252,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
           {noPaymentMethod ? (
             <>
               <View style={styles.noPaymentCard}>
-                <Text style={styles.noPaymentIcon}>💳</Text>
+                <CreditCard color={theme.tint} size={48} style={styles.noPaymentIcon} />
                 <Text style={styles.noPaymentTitle}>{t('parkingDetail.noPaymentTitle')}</Text>
                 <Text style={styles.noPaymentMessage}>{t('parkingDetail.noPaymentMessage')}</Text>
                 <TouchableOpacity
@@ -268,7 +298,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
                       </Text>
                     </View>
                     {selectedVehicleId === vehicle.id && (
-                      <Text style={styles.vehicleRowCheck}>✓</Text>
+                      <Check color="#34c759" size={16} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -337,7 +367,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     content: {
-      padding: 20,
+      padding: 5,
       paddingTop: 60,
       paddingBottom: 40,
     },
@@ -397,6 +427,34 @@ function makeStyles(theme: AppTheme) {
     noSlots: {
       color: '#ff3b30',
     },
+    receivingVehicles: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#34c759',
+      paddingVertical: 5,
+    },
+    keyNoteCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    keyNoteAccent: {
+      width: 4,
+      backgroundColor: '#6366f1',
+    },
+    keyNoteBody: {
+      flex: 1,
+      padding: 14,
+    },
+    keyNoteText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 18,
+    },
     sectionTitle: {
       fontSize: 15,
       fontWeight: '600',
@@ -413,7 +471,6 @@ function makeStyles(theme: AppTheme) {
       borderBottomColor: theme.divider,
     },
     rateIcon: {
-      fontSize: 18,
       marginRight: 8,
     },
     rateVehicle: {
@@ -569,11 +626,6 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       marginTop: 1,
     },
-    vehicleRowCheck: {
-      fontSize: 16,
-      color: '#34c759',
-      fontWeight: '700',
-    },
     cancelPickerButton: {
       alignItems: 'center',
       paddingVertical: 12,
@@ -595,7 +647,7 @@ function makeStyles(theme: AppTheme) {
       shadowRadius: 6,
       elevation: 3,
     },
-    noPaymentIcon: { fontSize: 48, marginBottom: 12 },
+    noPaymentIcon: { marginBottom: 12 },
     noPaymentTitle: {
       fontSize: 18,
       fontWeight: '700',

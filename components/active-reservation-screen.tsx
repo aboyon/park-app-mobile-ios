@@ -204,7 +204,11 @@ export default function ActiveReservationScreen({
         <Text style={styles.qrHint}>{t('activeReservation.qrHint')}</Text>
 
         <View style={styles.divider} />
-
+        {reservation.parking.parking_method && (
+          <View style={styles.row}>
+            <Text style={styles.value}>{t(`parkingDetail.parkingMethod_${reservation.parking.parking_method}`)}</Text>
+          </View>
+        )}
         <View style={styles.row}>
           <Text style={styles.label}>{t('activeReservation.reservedAtLabel')}</Text>
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
@@ -214,6 +218,15 @@ export default function ActiveReservationScreen({
           <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
         </View>
       </View>
+
+      {(reservation.parking.parking_method === 'parking_attendance' || reservation.parking.parking_method === 'both') && (
+        <View style={styles.keyNoteCard}>
+          <View style={styles.keyNoteAccent} />
+          <View style={styles.keyNoteBody}>
+            <Text style={styles.keyNoteText}>{t('parkingDetail.keyNote')}</Text>
+          </View>
+        </View>
+      )}
 
       {isInProgress ? (
         <View style={styles.card}>
@@ -320,7 +333,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     container: {
-      paddingHorizontal: 15,
+      paddingHorizontal: 8,
       paddingTop: 60,
       paddingBottom: 40,
     },
@@ -423,6 +436,28 @@ function makeStyles(theme: AppTheme) {
       fontSize: 16,
       fontWeight: '700',
       color: '#6366f1',
+    },
+    keyNoteCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    keyNoteAccent: {
+      width: 4,
+      backgroundColor: '#6366f1',
+    },
+    keyNoteBody: {
+      flex: 1,
+      padding: 14,
+    },
+    keyNoteText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 18,
     },
     noRate: {
       fontSize: 13,
