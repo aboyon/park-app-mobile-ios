@@ -3,7 +3,7 @@ import { Lock, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -25,7 +25,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/auth`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth`, {
         method: 'POST',
         headers: apiHeaders(),
         body: JSON.stringify({ email, password }),

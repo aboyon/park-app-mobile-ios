@@ -3,7 +3,7 @@ import { Bike, Car, Check, CreditCard, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
@@ -85,8 +85,8 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
     setVehiclesLoading(true);
     try {
       const [vehiclesRes, paymentsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/my-vehicles`, { headers: apiHeaders(token!) }),
-        fetch(`${API_BASE}/api/payment-methods`, { headers: apiHeaders(token!) }),
+        fetch(`${API_BASE_URL}/api/my-vehicles`, { headers: apiHeaders(token!) }),
+        fetch(`${API_BASE_URL}/api/payment-methods`, { headers: apiHeaders(token!) }),
       ]);
       if (!vehiclesRes.ok) throw new Error();
       const vehiclesData: Vehicle[] = await vehiclesRes.json();
@@ -114,7 +114,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
     setReserving(true);
     setReservationError('');
     try {
-      const response = await fetch(`${API_BASE}/api/parking-reservations`, {
+      const response = await fetch(`${API_BASE_URL}/api/parking-reservations`, {
         method: 'POST',
         headers: apiHeaders(token!),
         body: JSON.stringify({

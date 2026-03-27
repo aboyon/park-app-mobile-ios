@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -48,7 +48,7 @@ export default function RequireVehicleScreen({ onDismiss }: { onDismiss: () => P
     setSaving(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/my-vehicles`, {
+      const response = await fetch(`${API_BASE_URL}/api/my-vehicles`, {
         method: 'POST',
         headers: apiHeaders(token!),
         body: JSON.stringify({

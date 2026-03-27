@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 
 export type Rate = {
@@ -113,7 +113,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
           projectId: '3cde002a-6754-482d-8754-6bd8c6e298c0',
         });
         if (pushToken === registeredPushToken) return;
-        await fetch(`${API_BASE}/api/app-notfication-token`, {
+        await fetch(`${API_BASE_URL}/api/app-notfication-token`, {
           method: 'PATCH',
           headers: apiHeaders(token),
           body: JSON.stringify({ app_notification_token: pushToken }),
@@ -131,7 +131,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
     if (!token) return;
 
     setLoading(true);
-    fetch(`${API_BASE}/api/me`, { headers: apiHeaders(token) })
+    fetch(`${API_BASE_URL}/api/me`, { headers: apiHeaders(token) })
       .then(async (r) => {
         if (r.ok) setMe(await r.json());
         else setError(true);
@@ -142,7 +142,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    await fetch(`${API_BASE}/api/me`, { headers: apiHeaders(token) })
+    await fetch(`${API_BASE_URL}/api/me`, { headers: apiHeaders(token) })
       .then(async (r) => { if (r.ok) setMe(await r.json()); })
       .catch(() => {});
   }, [token]);

@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -183,7 +183,7 @@ export default function ReservationDetail({
     setCancelling(true);
     setCancelError('');
     try {
-      const response = await fetch(`${API_BASE}/api/parking-reservations/${reservation.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/parking-reservations/${reservation.id}`, {
         method: 'DELETE',
         headers: apiHeaders(token!),
       });

@@ -2,7 +2,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -32,7 +32,7 @@ export default function SignupScreen() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/create-account`, {
+      const response = await fetch(`${API_BASE_URL}/api/create-account`, {
         method: 'POST',
         headers: apiHeaders(),
         body: JSON.stringify({

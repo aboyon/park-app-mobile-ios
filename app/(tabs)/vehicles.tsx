@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -74,7 +74,7 @@ export default function VehiclesScreen() {
       else setLoading(true);
       setFetchError('');
       try {
-        const response = await fetch(`${API_BASE}/api/my-vehicles`, {
+        const response = await fetch(`${API_BASE_URL}/api/my-vehicles`, {
           headers: apiHeaders(token!),
         });
         if (!response.ok) throw new Error();
@@ -129,8 +129,8 @@ export default function VehiclesScreen() {
     try {
       const isEdit = editing !== null;
       const url = isEdit
-        ? `${API_BASE}/api/my-vehicles/${editing.id}`
-        : `${API_BASE}/api/my-vehicles`;
+        ? `${API_BASE_URL}/api/my-vehicles/${editing.id}`
+        : `${API_BASE_URL}/api/my-vehicles`;
       const response = await fetch(url, {
         method: isEdit ? 'PATCH' : 'POST',
         headers: apiHeaders(token!),

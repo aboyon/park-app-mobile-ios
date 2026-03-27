@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ReservationDetail, { type Reservation } from '@/components/reservation-detail';
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -48,7 +48,7 @@ export default function ReservationsScreen() {
     else setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/my-reservations`, {
+      const response = await fetch(`${API_BASE_URL}/api/my-reservations`, {
         headers: apiHeaders(token!),
       });
       if (!response.ok) throw new Error();

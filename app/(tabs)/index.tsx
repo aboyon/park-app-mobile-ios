@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ParkingDetail from '@/components/parking-detail';
-import { API_BASE, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
+import { API_BASE_URL, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
@@ -78,7 +78,7 @@ export default function IndexScreen() {
 
   const fetchNearbyParkings = async (latitude: number, longitude: number) => {
     try {
-      const url = `${API_BASE}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${nearbyRadius.current}`;
+      const url = `${API_BASE_URL}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${nearbyRadius.current}`;
       const response = await fetch(url, { headers: apiHeaders(token!) });
       const data = await response.json();
       setParkings(data);

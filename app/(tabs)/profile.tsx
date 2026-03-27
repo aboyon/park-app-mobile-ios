@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale, type SupportedLocale } from '@/context/locale';
 import { useTheme, type ThemePreference } from '@/context/theme';
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/me`, {
         headers: apiHeaders(token!),
       });
       const data = await response.json();

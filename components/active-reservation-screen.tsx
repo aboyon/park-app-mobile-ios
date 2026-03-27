@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { type ActiveReservation } from '@/context/me';
@@ -84,7 +84,7 @@ export default function ActiveReservationScreen({
     if (isInProgress || keepMinutes == null) return;
 
     const autoCancel = () => {
-      fetch(`${API_BASE}/api/parking-reservations/${reservation.id}?expired_by_app=true`, {
+      fetch(`${API_BASE_URL}/api/parking-reservations/${reservation.id}?expired_by_app=true`, {
         method: 'DELETE',
         headers: apiHeaders(token!),
       })
@@ -128,7 +128,7 @@ export default function ActiveReservationScreen({
     setCancelling(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE}/api/parking-reservations/${reservation.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/parking-reservations/${reservation.id}`, {
         method: 'DELETE',
         headers: apiHeaders(token!),
       });
@@ -150,7 +150,7 @@ export default function ActiveReservationScreen({
     setError('');
     try {
       const response = await fetch(
-        `${API_BASE}/api/parking-reservations/${reservation.id}/start`,
+        `${API_BASE_URL}/api/parking-reservations/${reservation.id}/start`,
         { method: 'PATCH', headers: apiHeaders(token!) },
       );
       if (!response.ok) {

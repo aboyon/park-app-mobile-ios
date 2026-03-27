@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -218,7 +218,7 @@ export default function ScheduledScreen() {
     else setLoading(true);
     setFetchError('');
     try {
-      const res = await fetch(`${API_BASE}/api/scheduled-reservations`, {
+      const res = await fetch(`${API_BASE_URL}/api/scheduled-reservations`, {
         headers: apiHeaders(token!),
       });
       if (!res.ok) throw new Error();
@@ -242,7 +242,7 @@ export default function ScheduledScreen() {
       setParkingSearching(true);
       try {
         const res = await fetch(
-          `${API_BASE}/api/find-parking?q=${encodeURIComponent(parkingQuery.trim())}`,
+          `${API_BASE_URL}/api/find-parking?q=${encodeURIComponent(parkingQuery.trim())}`,
           { headers: apiHeaders(token!) },
         );
         if (res.ok) setParkingResults(await res.json());
@@ -302,8 +302,8 @@ export default function ScheduledScreen() {
     try {
       const isEdit = editing !== null;
       const url = isEdit
-        ? `${API_BASE}/api/scheduled-reservations/${editing.id}`
-        : `${API_BASE}/api/scheduled-reservations`;
+        ? `${API_BASE_URL}/api/scheduled-reservations/${editing.id}`
+        : `${API_BASE_URL}/api/scheduled-reservations`;
       const res = await fetch(url, {
         method: isEdit ? 'PATCH' : 'POST',
         headers: apiHeaders(token!),
@@ -343,7 +343,7 @@ export default function ScheduledScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              await fetch(`${API_BASE}/api/scheduled-reservations/${editing.id}`, {
+              await fetch(`${API_BASE_URL}/api/scheduled-reservations/${editing.id}`, {
                 method: 'DELETE',
                 headers: apiHeaders(token!),
               });

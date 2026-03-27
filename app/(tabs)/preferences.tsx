@@ -15,7 +15,7 @@ import {
 
 import { Picker } from '@react-native-picker/picker';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
@@ -56,7 +56,7 @@ export default function PreferencesScreen() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/me`, {
         headers: apiHeaders(token!),
       });
       const data = await response.json();
@@ -85,7 +85,7 @@ export default function PreferencesScreen() {
     setSaveError('');
     setSaveSuccess(false);
     try {
-      const response = await fetch(`${API_BASE}/api/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/me`, {
         method: 'PATCH',
         headers: apiHeaders(token!),
         body: JSON.stringify({

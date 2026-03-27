@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 
-import { API_BASE, apiHeaders } from '@/constants/config';
+import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -143,7 +143,7 @@ export default function PaymentsScreen() {
       else setLoading(true);
       setFetchError('');
       try {
-        const response = await fetch(`${API_BASE}/api/payment-methods`, {
+        const response = await fetch(`${API_BASE_URL}/api/payment-methods`, {
           headers: apiHeaders(token!),
         });
         if (!response.ok) throw new Error();
@@ -205,7 +205,7 @@ export default function PaymentsScreen() {
         };
       }
 
-      const response = await fetch(`${API_BASE}/api/payment-methods`, {
+      const response = await fetch(`${API_BASE_URL}/api/payment-methods`, {
         method: 'POST',
         headers: apiHeaders(token!),
         body: JSON.stringify({ payment_method: payload }),
@@ -229,7 +229,7 @@ export default function PaymentsScreen() {
     if (method.is_default) return;
     setSettingDefaultId(method.id);
     try {
-      await fetch(`${API_BASE}/api/payment-methods/${method.id}/set-default`, {
+      await fetch(`${API_BASE_URL}/api/payment-methods/${method.id}/set-default`, {
         method: 'PATCH',
         headers: apiHeaders(token!),
         body: JSON.stringify({ payment_method: { is_default: true } }),
@@ -252,7 +252,7 @@ export default function PaymentsScreen() {
           onPress: async () => {
             setDeletingId(method.id);
             try {
-              await fetch(`${API_BASE}/api/payment-methods/${method.id}`, {
+              await fetch(`${API_BASE_URL}/api/payment-methods/${method.id}`, {
                 method: 'DELETE',
                 headers: apiHeaders(token!),
               });
