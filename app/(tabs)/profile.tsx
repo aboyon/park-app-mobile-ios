@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { Car, ClipboardList, CreditCard, LogOut, Moon, Settings, Smartphone, Sun, User } from 'lucide-react-native';
+import { Car, ClipboardList, CreditCard, FileText, LogOut, Moon, Settings, Shield, Smartphone, Sun, User } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -142,6 +143,26 @@ export default function ProfileScreen() {
           >
             <CreditCard color={theme.tint} size={20} />
             <Text style={styles.accountRowLabel}>{t('tabs.payments')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.accountRowDivider} />
+          <TouchableOpacity
+            style={styles.accountRow}
+            onPress={() => Linking.openURL('https://parke.ar/terminos/')}
+            activeOpacity={0.7}
+          >
+            <FileText color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('profile.terms')}</Text>
+            <Text style={styles.accountRowChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.accountRowDivider} />
+          <TouchableOpacity
+            style={styles.accountRow}
+            onPress={() => Linking.openURL('https://parke.ar/privacidad/')}
+            activeOpacity={0.7}
+          >
+            <Shield color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('profile.privacy')}</Text>
             <Text style={styles.accountRowChevron}>›</Text>
           </TouchableOpacity>
         </View>

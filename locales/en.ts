@@ -26,7 +26,7 @@ const en = {
 
   // Login
   login: {
-    appName: 'Park App',
+    appName: 'Parke.Ar',
     subtitle: 'Find and reserve parking spots nearby',
     email: 'Email',
     password: 'Password',
@@ -61,9 +61,12 @@ const en = {
     notDriving: 'Not driving — tap refresh to search',
     searchNearby: 'Search Nearby Parkings',
     searching: 'Searching…',
-    availableNow: 'AVAILABLE NOW',
+    availableNow: 'Results',
     flexible: 'Flexible',
     strict: 'Strict',
+    waitsForArrival: 'Waits %{minutes} min for your arrival',
+    openToday: 'Open %{open} – %{close}',
+    closedToday: 'Closed today',
     drivingAt: "You're driving at",
     noParkingsNearby: 'No available parkings nearby',
   },
@@ -126,6 +129,11 @@ const en = {
     couldNotSave: 'Could not save changes',
     couldNotLoad: 'Could not load profile',
     logout: 'Logout',
+    terms: 'Terms and Conditions',
+    privacy: 'Privacy Policy',
+    searchPreferences: 'NEARBY SEARCH',
+    inDayTimes: 'Display only open parkings',
+    onlyOperatives: 'Only parking working with the app',
   },
 
   // Language names
@@ -254,6 +262,8 @@ const en = {
     closedTitle: 'No rates available today',
     closedMessage: "There are no rates for today — the parking seems to be closed.",
     closedMessagePhone: "If you think this is an error, you can call them at:",
+    noSubscriptionTitle: 'Not available through Parke.ar',
+    noSubscriptionMessage: 'This parking does not operate with us yet, so we cannot ensure availability. But you can still try to park there if you want.',
   },
 
   // Require Vehicle Screen

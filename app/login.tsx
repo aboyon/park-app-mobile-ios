@@ -131,12 +131,12 @@ function makeStyles(theme: AppTheme) {
     },
     logoText: {
       fontSize: 36,
-      fontWeight: 'bold',
+      fontFamily: 'Syne_800ExtraBold',
       color: '#fff',
     },
     title: {
       fontSize: 30,
-      fontWeight: 'bold',
+      fontFamily: 'Syne_800ExtraBold',
       color: theme.text,
       marginBottom: 6,
     },

@@ -1,5 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import { Syne_700Bold, Syne_800ExtraBold, useFonts } from '@expo-google-fonts/syne';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { CheckCircle2, Clock, X } from 'lucide-react-native';
 import { useEffect } from 'react';
@@ -9,8 +11,11 @@ import 'react-native-reanimated';
 import { AuthProvider } from '@/context/auth';
 import { LocaleProvider, useLocale } from '@/context/locale';
 import { MeProvider, useMe } from '@/context/me';
+import { SearchPreferencesProvider } from '@/context/search-preferences';
 import { ThemeProvider, useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+
+SplashScreen.preventAutoHideAsync();
 
 function NotificationOverlay() {
   const { notificationAlert, clearNotificationAlert } = useMe();
@@ -114,15 +119,25 @@ function AppStack() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ Syne_700Bold, Syne_800ExtraBold });
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
     <ThemeProvider>
       <LocaleProvider>
-        <AuthProvider>
-          <MeProvider>
-            <AppStack />
-            <NotificationOverlay />
-          </MeProvider>
-        </AuthProvider>
+        <SearchPreferencesProvider>
+          <AuthProvider>
+            <MeProvider>
+              <AppStack />
+              <NotificationOverlay />
+            </MeProvider>
+          </AuthProvider>
+        </SearchPreferencesProvider>
       </LocaleProvider>
     </ThemeProvider>
   );

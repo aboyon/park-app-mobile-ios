@@ -26,7 +26,7 @@ const es = {
 
   // Login
   login: {
-    appName: 'Park App',
+    appName: 'Parke.ar',
     subtitle: 'Encontrá y reservá estacionamientos cercanos',
     email: 'Correo',
     password: 'Contraseña',
@@ -61,9 +61,12 @@ const es = {
     notDriving: 'No estás conduciendo — toca actualizar para buscar',
     searchNearby: 'Actualizar',
     searching: 'Buscando…',
-    availableNow: 'DISPONIBLES AHORA',
+    availableNow: 'Resultados',
     flexible: 'Flexible',
     strict: 'Estricto',
+    waitsForArrival: 'Espera %{minutes} min para tu llegada',
+    openToday: 'Abierto %{open} – %{close}',
+    closedToday: 'Cerrado hoy',
     drivingAt: 'Estás manejando a',
     noParkingsNearby: 'No hay estacionamientos disponibles cerca',
   },
@@ -126,6 +129,11 @@ const es = {
     couldNotSave: 'No se pudieron guardar los cambios',
     couldNotLoad: 'No se pudo cargar el perfil',
     logout: 'Cerrar sesión',
+    terms: 'Términos y condiciones',
+    privacy: 'Política de privacidad',
+    searchPreferences: 'BÚSQUEDA CERCANA',
+    inDayTimes: 'Mostrar solo estacionamientos abiertos',
+    onlyOperatives: 'Solo estacionamientos que operan con la app',
   },
 
   // Language names
@@ -254,6 +262,8 @@ const es = {
     closedTitle: 'Sin tarifas disponibles hoy',
     closedMessage: 'No hay tarifas para hoy — parece que el estacionamiento está cerrado.',
     closedMessagePhone: 'Si creés que es un error, podés llamarlos al:',
+    noSubscriptionTitle: 'No disponible en Parke.ar',
+    noSubscriptionMessage: 'Este estacionamiento aún no opera con nosotros, por lo que no podemos garantizar disponibilidad. Pero podés intentar estacionar igualmente si querés.',
   },
 
   // Require Vehicle Screen

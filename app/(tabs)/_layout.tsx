@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { CalendarClock, Home, User } from 'lucide-react-native';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import ActiveReservationScreen from '@/components/active-reservation-screen';
 import RequireVehicleScreen from '@/components/require-vehicle-screen';
@@ -8,6 +8,33 @@ import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
 import { useAppTheme } from '@/hooks/use-app-theme';
+
+function ParkeArLogo() {
+  const theme = useAppTheme();
+  return (
+    <View style={logoStyles.container}>
+      <Text style={[logoStyles.text, { color: theme.text }]}>
+        parke
+      </Text>
+      <Text style={[logoStyles.text, { color: theme.tint }]}>
+        .ar
+      </Text>
+    </View>
+  );
+}
+
+const logoStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginLeft: 4,
+  },
+  text: {
+    fontSize: 20,
+    fontFamily: 'Syne_800ExtraBold',
+    letterSpacing: -0.5,
+  },
+});
 
 export default function TabLayout() {
   const { token } = useAuth();
@@ -36,7 +63,13 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerLeft: () => <ParkeArLogo />,
+        headerTitle: () => null,
+        headerStyle: {
+          backgroundColor: theme.card,
+        },
+        headerShadowVisible: false,
         tabBarActiveTintColor: theme.tint,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {

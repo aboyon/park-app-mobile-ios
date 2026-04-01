@@ -64,7 +64,13 @@ export default function SignupScreen() {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>{t('signup.title')}</Text>
+      <View style={styles.logoArea}>
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoText}>P</Text>
+        </View>
+        <Text style={styles.title}>{t('login.appName')}</Text>
+      </View>
+      <Text style={styles.subtitle}>{t('signup.title')}</Text>
 
       <Text style={styles.label}>{t('signup.name')}</Text>
       <TextInput
@@ -132,11 +138,35 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.background,
       padding: 30,
     },
+    logoArea: {
+      alignItems: 'center',
+      marginBottom: 5,
+    },
+    logoCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 20,
+      backgroundColor: theme.tint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 5,
+    },
+    logoText: {
+      fontSize: 36,
+      fontFamily: 'Syne_800ExtraBold',
+      color: '#fff',
+    },
     title: {
       fontSize: 28,
-      fontWeight: 'bold',
+      fontFamily: 'Syne_800ExtraBold',
       marginBottom: 40,
       color: theme.text,
+    },
+    subtitle: {
+      fontSize: 20,
+      color: '#FFF',
+      textAlign: 'center',
+      fontFamily: 'Syne_700Bold',
     },
     label: {
       alignSelf: 'flex-start',

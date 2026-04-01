@@ -7,11 +7,14 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Picker } from '@react-native-picker/picker';
 
@@ -19,6 +22,8 @@ import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
+import { useSearchPreferences } from '@/context/search-preferences';
+import { useTheme } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const DISTANCE_OPTIONS: { value: number; label: string }[] = [
@@ -40,8 +45,15 @@ export default function PreferencesScreen() {
   const { token } = useAuth();
   const { refresh } = useMe();
   const theme = useAppTheme();
+  const { colorScheme } = useTheme();
   const { t } = useLocale();
   const styles = makeStyles(theme);
+
+  const gradientColors: [string, string] = colorScheme === 'dark'
+    ? ['#0c1422', '#0a0a0f']
+    : ['#dceeff', '#f0f4ff'];
+
+  const { inDayTimes, onlyOperatives, setInDayTimes, setOnlyOperatives } = useSearchPreferences();
 
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,27 +128,28 @@ export default function PreferencesScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
+      <LinearGradient colors={gradientColors} style={styles.centered}>
         <ActivityIndicator size="large" color={theme.tint} />
-      </View>
+      </LinearGradient>
     );
   }
 
   if (fetchError) {
     return (
-      <View style={styles.centered}>
+      <LinearGradient colors={gradientColors} style={styles.centered}>
         <Text style={styles.errorText}>{fetchError}</Text>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.outer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <LinearGradient colors={gradientColors} style={styles.outer}>
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
-        style={styles.outer}
+        style={styles.fill}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         refreshControl={
@@ -192,8 +205,32 @@ export default function PreferencesScreen() {
             <Text style={styles.saveButtonText}>{t('profile.saveChanges')}</Text>
           )}
         </TouchableOpacity>
+
+        <Text style={[styles.sectionLabel, styles.sectionLabelTop]}>{t('profile.searchPreferences')}</Text>
+        <View style={styles.card}>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>{t('profile.inDayTimes')}</Text>
+            <Switch
+              value={inDayTimes}
+              onValueChange={setInDayTimes}
+              trackColor={{ false: theme.border, true: theme.tint }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={styles.fieldDivider} />
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>{t('profile.onlyOperatives')}</Text>
+            <Switch
+              value={onlyOperatives}
+              onValueChange={setOnlyOperatives}
+              trackColor={{ false: theme.border, true: theme.tint }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -201,17 +238,18 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     outer: {
       flex: 1,
-      backgroundColor: theme.pageBackground,
+    },
+    fill: {
+      flex: 1,
     },
     centered: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.pageBackground,
     },
     container: {
       paddingHorizontal: 8,
-      paddingTop: 60,
+      paddingTop: 40,
       paddingBottom: 40,
     },
     backButton: {
@@ -265,6 +303,21 @@ function makeStyles(theme: AppTheme) {
     pickerItem: {
       fontSize: 15,
       color: theme.text,
+    },
+    sectionLabelTop: {
+      marginTop: 40,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+    },
+    toggleLabel: {
+      fontSize: 15,
+      color: theme.text,
+      flex: 1,
+      paddingRight: 12,
     },
     saveButton: {
       backgroundColor: theme.tint,

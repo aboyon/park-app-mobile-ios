@@ -8,6 +8,7 @@ import { API_BASE_URL, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES }
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
 import { useMe } from '@/context/me';
+import { useSearchPreferences } from '@/context/search-preferences';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type ParkingRate = {
@@ -30,6 +31,11 @@ type VehicleRate = {
 
 type VehicleRates = Record<string, VehicleRate>;
 
+type Opening = {
+  open_at: string;
+  close_at: string;
+};
+
 type Parking = {
   id: string;
   name: string;
@@ -45,11 +51,18 @@ type Parking = {
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
   parking_rates?: ParkingRate[];
+  openings?: Opening[];
+  active_subscription?: { id?: string };
 };
 
 function getTodayRate(rates: ParkingRate[]): ParkingRate | null {
   const today = new Date().getDay();
   return rates.find((r) => r.week_of_day === today) ?? null;
+}
+
+function getTodayOpening(openings: Opening[]): Opening | null {
+  const today = new Date().getDay();
+  return openings[today] ?? null;
 }
 
 function formatRate(cents: number): string {
@@ -62,6 +75,7 @@ export default function IndexScreen() {
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const { t } = useLocale();
+  const { inDayTimes, onlyOperatives } = useSearchPreferences();
   const [speed, setSpeed] = useState<number | null>(null);
   const [status, setStatus] = useState('');
   const [parkings, setParkings] = useState<Parking[]>([]);
@@ -78,7 +92,9 @@ export default function IndexScreen() {
 
   const fetchNearbyParkings = async (latitude: number, longitude: number) => {
     try {
-      const url = `${API_BASE_URL}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${nearbyRadius.current}`;
+      let url = `${API_BASE_URL}/api/near-to-me?latitude=${latitude}&longitude=${longitude}&radius=${nearbyRadius.current}`;
+      if (inDayTimes) url += `&in_day_times=true`;
+      if (onlyOperatives) url += `&only_operatives=true`;
       const response = await fetch(url, { headers: apiHeaders(token!) });
       const data = await response.json();
       setParkings(data);
@@ -133,7 +149,13 @@ export default function IndexScreen() {
   }, []);
 
   if (selectedParking) {
-    return <ParkingDetail parking={selectedParking} onBack={() => setSelectedParking(null)} />;
+    return (
+      <ParkingDetail
+        parking={selectedParking}
+        onBack={() => setSelectedParking(null)}
+        userLocation={lastCoords.current ?? undefined}
+      />
+    );
   }
 
   return (
@@ -181,34 +203,44 @@ export default function IndexScreen() {
           <View style={styles.groupCard}>
             {parkings.map((parking, index) => {
               const rate = getTodayRate(parking.parking_rates ?? []);
-              const isFlexible = parking.rate_policy_strategy === 'flexible';
-              const isStrict = parking.rate_policy_strategy === 'strict';
+              const opening = getTodayOpening(parking.openings ?? []);
+              const hasSubscription = !!parking.active_subscription?.id;
 
               return (
                 <View key={index}>
                   {index > 0 && <View style={styles.rowDivider} />}
                   <TouchableOpacity
-                    style={styles.row}
+                    style={[styles.row, !hasSubscription && styles.rowMuted]}
                     onPress={() => setSelectedParking(parking)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.rowInfo}>
-                      <Text style={styles.rowName}>{parking.name}</Text>
+                      <Text style={[styles.rowName, !hasSubscription && styles.rowNameMuted]}>
+                        {parking.name}
+                      </Text>
                       <View style={styles.rowAddressLine}>
                         <MapPin color={theme.textMuted} size={11} />
                         <Text style={styles.rowAddress}>{parking.address}</Text>
                       </View>
                       <Text style={styles.rowDistance}>{t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}</Text>
-                      {(isFlexible || isStrict) && (
-                        <View style={[styles.policyBadge, isFlexible ? styles.policyFlexible : styles.policyStrict]}>
-                          <Text style={[styles.policyBadgeText, isFlexible ? styles.policyFlexibleText : styles.policyStrictText]}>
-                            {isFlexible ? t('home.flexible') : t('home.strict')}
+                      {hasSubscription && (
+                        <View style={styles.rowMeta}>
+                          <Text style={styles.rowMetaText}>
+                            {t('home.waitsForArrival', { minutes: parking.keep_slot_open_minutes })}
+                          </Text>
+                          <Text style={styles.rowMetaDot}>·</Text>
+                          <Text style={styles.rowMetaText}>
+                            {opening
+                              ? t('home.openToday', { open: opening.open_at, close: opening.close_at })
+                              : t('home.closedToday')}
                           </Text>
                         </View>
                       )}
                     </View>
                     <View style={styles.rowRight}>
-                      {rate && <Text style={styles.rowRate}>{formatRate(rate.rate_per_hour_cents)}</Text>}
+                      {hasSubscription && rate && (
+                        <Text style={styles.rowRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                      )}
                       <Text style={styles.rowChevron}>›</Text>
                     </View>
                   </TouchableOpacity>
@@ -227,7 +259,7 @@ function makeStyles(theme: AppTheme) {
     container: {
       flex: 1,
       backgroundColor: theme.pageBackground,
-      paddingTop: 60,
+      paddingTop: 20,
     },
     header: {
       paddingHorizontal: 15,
@@ -309,7 +341,7 @@ function makeStyles(theme: AppTheme) {
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: 8,
       paddingVertical: 14,
       gap: 12,
     },
@@ -321,11 +353,17 @@ function makeStyles(theme: AppTheme) {
     rowInfo: {
       flex: 1,
     },
+    rowMuted: {
+      opacity: 0.5,
+    },
     rowName: {
       fontSize: 15,
       fontWeight: '600',
       color: theme.text,
       marginBottom: 4,
+    },
+    rowNameMuted: {
+      color: theme.textMuted,
     },
     rowAddressLine: {
       flexDirection: 'row',
@@ -343,27 +381,19 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       marginBottom: 6,
     },
-    policyBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 20,
+    rowMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      flexWrap: 'wrap',
     },
-    policyFlexible: {
-      backgroundColor: '#dcfce7',
+    rowMetaText: {
+      fontSize: 12,
+      color: theme.textMuted,
     },
-    policyStrict: {
-      backgroundColor: '#fef3c7',
-    },
-    policyBadgeText: {
-      fontSize: 11,
-      fontWeight: '600',
-    },
-    policyFlexibleText: {
-      color: '#15803d',
-    },
-    policyStrictText: {
-      color: '#92400e',
+    rowMetaDot: {
+      fontSize: 12,
+      color: theme.textMuted,
     },
     rowRight: {
       alignItems: 'flex-end',

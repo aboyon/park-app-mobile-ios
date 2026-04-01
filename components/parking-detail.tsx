@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { Bike, Car, Check, CreditCard, Truck } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
@@ -42,6 +43,7 @@ type Parking = {
   parking_method?: ParkingMethod;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
+  active_subscription?: { id?: string };
 };
 
 type LucideIcon = typeof Car;
@@ -58,7 +60,87 @@ function formatRate(cents: number) {
 }
 
 
-export default function ParkingDetail({ parking, onBack }: { parking: Parking; onBack: () => void }) {
+type UserLocation = { latitude: number; longitude: number };
+type Coord = { latitude: number; longitude: number };
+
+function ParkingMap({
+  parking,
+  userLocation,
+  theme,
+}: {
+  parking: Parking;
+  userLocation?: UserLocation;
+  theme: AppTheme;
+}) {
+  const [route, setRoute] = useState<Coord[]>([]);
+  const mapRef = useRef<MapView>(null);
+
+  const destination: Coord = { latitude: parking.latitude, longitude: parking.longitude };
+
+  const region: Region = {
+    latitude: parking.latitude,
+    longitude: parking.longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  };
+
+  useEffect(() => {
+    if (!userLocation) return;
+
+    const { latitude: uLat, longitude: uLon } = userLocation;
+    const { latitude: pLat, longitude: pLon } = parking;
+
+    fetch(
+      `https://router.project-osrm.org/route/v1/driving/${uLon},${uLat};${pLon},${pLat}?overview=full&geometries=geojson`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        const coords: [number, number][] = data?.routes?.[0]?.geometry?.coordinates ?? [];
+        setRoute(coords.map(([lon, lat]) => ({ latitude: lat, longitude: lon })));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || route.length === 0 || !userLocation) return;
+    const points = [userLocation, destination];
+    mapRef.current.fitToCoordinates(points, {
+      edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+      animated: true,
+    });
+  }, [route]);
+
+  return (
+    <MapView
+      ref={mapRef}
+      style={mapStyles.map}
+      initialRegion={region}
+      showsUserLocation={!!userLocation}
+      showsMyLocationButton={false}
+    >
+      <Marker coordinate={destination} pinColor={theme.tint} />
+      {route.length > 0 && (
+        <Polyline
+          coordinates={route}
+          strokeColor={theme.tint}
+          strokeWidth={3}
+        />
+      )}
+    </MapView>
+  );
+}
+
+const mapStyles = StyleSheet.create({ map: { flex: 1, width: '100%' } });
+
+export default function ParkingDetail({
+  parking,
+  onBack,
+  userLocation,
+}: {
+  parking: Parking;
+  onBack: () => void;
+  userLocation?: UserLocation;
+}) {
   const { token } = useAuth();
   const { refresh } = useMe();
   const theme = useAppTheme();
@@ -141,42 +223,77 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
   const noSlotsAvailable = parking.available_slots <= 0 && !receivingVehicles;
   const noRatesToday = Object.keys(parking.today_rate_cents ?? {}).length === 0;
   const needsKey = parking.parking_method === 'parking_attendance' || parking.parking_method === 'both';
+  const hasSubscription = !!parking.active_subscription?.id;
+
+  if (!hasSubscription) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.card}>
+          <Text style={styles.name}>{parking.name}</Text>
+          <Text style={styles.address}>{parking.address}</Text>
+          <Text style={styles.distance}>
+            {t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}
+          </Text>
+        </View>
+
+        <View style={styles.noSubscriptionCard}>
+          <View style={styles.noSubscriptionAccent} />
+          <View style={styles.noSubscriptionBody}>
+            <Text style={styles.noSubscriptionTitle}>{t('parkingDetail.noSubscriptionTitle')}</Text>
+            <Text style={styles.noSubscriptionMessage}>{t('parkingDetail.noSubscriptionMessage')}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
+          <Text style={styles.mapsButtonText}>{t('parkingDetail.openMaps')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backText}>{t('common.back')}</Text>
-      </TouchableOpacity>
-
-      <View style={styles.card}>
-        <Text style={styles.name}>{parking.name}</Text>
-        <Text style={styles.address}>{parking.address}</Text>
-        <Text style={styles.distance}>
-          {t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}
-        </Text>
-
-        <View style={styles.divider} />
-
-        {receivingVehicles ? (
-          <Text style={styles.receivingVehicles}>{t('parkingDetail.receivingVehicles')}</Text>
-        ) : (
-          <View style={styles.row}>
-            <Text style={styles.metaLabel}>{t('parkingDetail.availableSlots')}</Text>
-            <Text style={[styles.metaValue, noSlotsAvailable && styles.noSlots]}>
-              {parking.available_slots}
-            </Text>
-          </View>
-        )}
-        {parking.parking_method && (
-          <View style={styles.row}>
-            <Text style={styles.metaValue}>{t(`parkingDetail.parkingMethod_${parking.parking_method}`)}</Text>
-          </View>
-        )}
-        <View style={styles.row}>
-          <Text style={styles.metaLabel}>{t('parkingDetail.reservationExpires')}</Text>
-          <Text style={styles.metaValue}>{parking.keep_slot_open_minutes} {t('parkingDetail.min')}</Text>
-        </View>
+      <View style={styles.mapHeader}>
+        <ParkingMap parking={parking} userLocation={userLocation} theme={theme} />
+        <TouchableOpacity style={styles.backButtonOverlay} onPress={onBack}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
+        </TouchableOpacity>
       </View>
+
+      <View style={styles.contentPadded}>
+        <View style={styles.card}>
+          <Text style={styles.name}>{parking.name}</Text>
+          <Text style={styles.address}>{parking.address}</Text>
+          <Text style={styles.distance}>
+            {t('common.kmAway', { distance: (parking.distance / 1000).toFixed(1) })}
+          </Text>
+
+          <View style={styles.divider} />
+
+          {receivingVehicles ? (
+            <Text style={styles.receivingVehicles}>{t('parkingDetail.receivingVehicles')}</Text>
+          ) : (
+            <View style={styles.row}>
+              <Text style={styles.metaLabel}>{t('parkingDetail.availableSlots')}</Text>
+              <Text style={[styles.metaValue, noSlotsAvailable && styles.noSlots]}>
+                {parking.available_slots}
+              </Text>
+            </View>
+          )}
+          {parking.parking_method && (
+            <View style={styles.row}>
+              <Text style={styles.metaValue}>{t(`parkingDetail.parkingMethod_${parking.parking_method}`)}</Text>
+            </View>
+          )}
+          <View style={styles.row}>
+            <Text style={styles.metaLabel}>{t('parkingDetail.reservationExpires')}</Text>
+            <Text style={styles.metaValue}>{parking.keep_slot_open_minutes} {t('parkingDetail.min')}</Text>
+          </View>
+        </View>
 
       {needsKey && (
         <View style={styles.keyNoteCard}>
@@ -274,7 +391,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
           <Text style={styles.vehiclePickerTitle}>{t('parkingDetail.selectVehicle')}</Text>
 
           {vehiclesLoading ? (
-            <ActivityIndicator color="#6366f1" style={styles.vehiclesLoader} />
+            <ActivityIndicator color={theme.tint} style={styles.vehiclesLoader} />
           ) : vehiclesError !== '' ? (
             <Text style={styles.errorText}>{vehiclesError}</Text>
           ) : vehicles.length === 0 ? (
@@ -356,6 +473,7 @@ export default function ParkingDetail({ parking, onBack }: { parking: Parking; o
       <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
         <Text style={styles.mapsButtonText}>{t('parkingDetail.openMaps')}</Text>
       </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -367,16 +485,29 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.pageBackground,
     },
     content: {
-      padding: 5,
-      paddingTop: 60,
       paddingBottom: 40,
     },
-    backButton: {
-      marginBottom: 20,
+    mapHeader: {
+      width: '100%',
+      height: 260,
+    },
+    backButtonOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 0,
     },
     backText: {
-      fontSize: 16,
-      color: '#6366f1',
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    contentPadded: {
+      paddingHorizontal: 8,
+      paddingTop: 16,
     },
     card: {
       backgroundColor: theme.card,
@@ -444,7 +575,7 @@ function makeStyles(theme: AppTheme) {
     },
     keyNoteAccent: {
       width: 4,
-      backgroundColor: '#6366f1',
+      backgroundColor: theme.tint,
     },
     keyNoteBody: {
       flex: 1,
@@ -481,7 +612,7 @@ function makeStyles(theme: AppTheme) {
     ratePrice: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#6366f1',
+      color: theme.tint,
     },
     closedCard: {
       backgroundColor: theme.card,
@@ -551,7 +682,7 @@ function makeStyles(theme: AppTheme) {
       color: '#f59e0b',
     },
     reserveButton: {
-      backgroundColor: '#6366f1',
+      backgroundColor: theme.tint,
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',
@@ -662,7 +793,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 20,
     },
     addPaymentButton: {
-      backgroundColor: '#6366f1',
+      backgroundColor: theme.tint,
       paddingHorizontal: 28,
       paddingVertical: 13,
       borderRadius: 12,
@@ -680,15 +811,43 @@ function makeStyles(theme: AppTheme) {
       textAlign: 'center',
       marginBottom: 12,
     },
+    noSubscriptionCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 12,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    noSubscriptionAccent: {
+      width: 4,
+      backgroundColor: theme.textMuted,
+    },
+    noSubscriptionBody: {
+      flex: 1,
+      padding: 14,
+    },
+    noSubscriptionTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.textMuted,
+      marginBottom: 6,
+    },
+    noSubscriptionMessage: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 19,
+    },
     mapsButton: {
       padding: 15,
       borderRadius: 10,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#6366f1',
+      borderColor: theme.tint,
     },
     mapsButtonText: {
-      color: '#6366f1',
+      color: theme.tint,
       fontSize: 16,
       fontWeight: '600',
     },
