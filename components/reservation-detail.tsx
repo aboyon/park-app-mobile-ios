@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
+import { ParkingMap } from '@/components/parking-map';
 import {
   ActivityIndicator,
   Modal,
@@ -36,6 +37,8 @@ export type Reservation = {
   parking: {
     name: string;
     address: string;
+    latitude?: number;
+    longitude?: number;
   };
   vehicle: {
     license_plate: string;
@@ -200,19 +203,35 @@ export default function ReservationDetail({
     }
   };
 
+  const parkingCoords =
+    reservation.status === 'completed' &&
+    reservation.parking.latitude != null &&
+    reservation.parking.longitude != null
+      ? { latitude: reservation.parking.latitude, longitude: reservation.parking.longitude }
+      : null;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backText}>{t('common.back')}</Text>
-      </TouchableOpacity>
+
+      {parkingCoords ? (
+        <View style={styles.mapHeader}>
+          <ParkingMap parking={parkingCoords} theme={theme} style={styles.map} />
+          <TouchableOpacity style={styles.backButtonOverlay} onPress={onBack}>
+            <Text style={styles.backTextOverlay}>{t('common.back')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <View style={styles.card}>
-            <Text style={styles.parkingName}>{reservation.parking.name}</Text>
-            <Text style={styles.parkingAddress}>{reservation.parking.address}</Text>
-          </View>
+          <Text style={styles.parkingName}>{reservation.parking.name}</Text>
+          <Text style={styles.parkingAddress}>{reservation.parking.address}</Text>
+
           <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.badgeText, { color: statusStyle.text }]}>{statusLabel}</Text>
           </View>
@@ -324,8 +343,26 @@ function makeStyles(theme: AppTheme) {
       paddingTop: 20,
       paddingBottom: 40,
     },
+    mapHeader: {
+      width: '100%',
+      height: 220,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 16,
+    },
+    map: { width: '100%', height: 220 },
+    backButtonOverlay: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+    },
     backButton: { marginBottom: 20 },
     backText: { fontSize: 16, color: theme.tint },
+    backTextOverlay: { fontSize: 16, color: '#fff', fontWeight: '600' },
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
@@ -342,7 +379,7 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       marginBottom: 16,
     },
-    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginTop: 20 },
     badgeText: { fontSize: 13, fontWeight: '600' },
     divider: { height: 1, backgroundColor: theme.divider, marginBottom: 12 },
     row: {

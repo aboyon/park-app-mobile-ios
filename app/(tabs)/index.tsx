@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { MapPin, RefreshCw } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -85,6 +86,17 @@ export default function IndexScreen() {
 
   const nearbyRadius = useRef<number>(NEARBY_RADIUS_METRES);
   const isNotDriving = speed !== null && speed <= MIN_DRIVING_SPEED_KMH;
+  const isDriving = speed !== null && speed > MIN_DRIVING_SPEED_KMH;
+
+  useEffect(() => {
+    const tag = 'home-search';
+    if (isDriving || manualLoading) {
+      activateKeepAwakeAsync(tag);
+    } else {
+      deactivateKeepAwake(tag);
+    }
+    return () => { deactivateKeepAwake(tag); };
+  }, [isDriving, manualLoading]);
 
   useEffect(() => {
     if (me?.notifiable_distance) nearbyRadius.current = me.notifiable_distance;

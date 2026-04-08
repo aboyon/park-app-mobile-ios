@@ -1,3 +1,4 @@
+import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -57,6 +58,8 @@ export default function ActiveReservationScreen({
   reservation: ActiveReservation;
   onDismiss: () => Promise<void>;
 }) {
+  useKeepAwake();
+
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
@@ -275,40 +278,6 @@ export default function ActiveReservationScreen({
 
       {!isInProgress && (
         <>
-          {confirmingStart ? (
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmText}>
-                {t('activeReservation.confirmStart')}
-              </Text>
-              <TouchableOpacity
-                style={[styles.startButton, starting && styles.buttonDisabled]}
-                onPress={handleStart}
-                disabled={starting}
-              >
-                {starting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.startButtonText}>{t('activeReservation.yesStart')}</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.notYetButton}
-                onPress={() => setConfirmingStart(false)}
-                disabled={starting}
-              >
-                <Text style={styles.notYetText}>{t('activeReservation.notYet')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.startButton, busy && styles.buttonDisabled]}
-              onPress={() => setConfirmingStart(true)}
-              disabled={busy}
-            >
-              <Text style={styles.startButtonText}>{t('activeReservation.startParking')}</Text>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity
             style={[styles.cancelButton, busy && styles.buttonDisabled]}
             onPress={handleCancel}
