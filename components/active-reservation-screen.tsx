@@ -217,6 +217,9 @@ export default function ActiveReservationScreen({
           <Text style={styles.label}>{t('activeReservation.hourlyRate')}</Text>
           <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
         </View>
+        <View style={styles.vehicleLicencePlate}>
+          <Text style={styles.licensePlate}>{reservation.vehicle?.license_plate}</Text>
+        </View>
       </View>
 
       {(reservation.parking.parking_method === 'parking_attendance' || reservation.parking.parking_method === 'both') && (
@@ -230,9 +233,6 @@ export default function ActiveReservationScreen({
 
       {isInProgress ? (
         <View style={styles.card}>
-          <View style={styles.vehicleLicencePlate}>
-            <Text style={styles.licensePlate}>{reservation.vehicle?.license_plate}</Text>
-          </View>
           <View style={styles.elapsed}>
             <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
             <Text style={styles.elapsedLabel}>{t('activeReservation.parkingDuration')}</Text>
@@ -435,7 +435,7 @@ function makeStyles(theme: AppTheme) {
     costValue: {
       fontSize: 16,
       fontWeight: '700',
-      color: '#6366f1',
+      color: theme.tint,
     },
     keyNoteCard: {
       backgroundColor: theme.card,
@@ -447,8 +447,8 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
     },
     keyNoteAccent: {
-      width: 4,
-      backgroundColor: '#6366f1',
+      width: 10,
+      backgroundColor: theme.amber,
     },
     keyNoteBody: {
       flex: 1,
@@ -475,8 +475,8 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
     },
     countdownAccent: {
-      width: 4,
-      backgroundColor: '#f59e0b',
+      width: 10,
+      backgroundColor: theme.tint,
     },
     countdownBody: {
       flex: 1,
@@ -487,7 +487,7 @@ function makeStyles(theme: AppTheme) {
     countdownTimer: {
       fontSize: 52,
       fontWeight: 'bold',
-      color: '#f59e0b',
+      color: theme.tint,
       textAlign: 'center',
       fontVariant: ['tabular-nums'],
     },
@@ -504,7 +504,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 16,
     },
     startButton: {
-      backgroundColor: '#6366f1',
+      backgroundColor: theme.tint,
       padding: 16,
       borderRadius: 12,
       alignItems: 'center',

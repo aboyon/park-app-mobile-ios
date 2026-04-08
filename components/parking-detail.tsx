@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { Bike, Car, Check, CreditCard, Truck } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
+
+import { ParkingMap } from '@/components/parking-map';
 
 import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
@@ -61,76 +62,6 @@ function formatRate(cents: number) {
 
 
 type UserLocation = { latitude: number; longitude: number };
-type Coord = { latitude: number; longitude: number };
-
-function ParkingMap({
-  parking,
-  userLocation,
-  theme,
-}: {
-  parking: Parking;
-  userLocation?: UserLocation;
-  theme: AppTheme;
-}) {
-  const [route, setRoute] = useState<Coord[]>([]);
-  const mapRef = useRef<MapView>(null);
-
-  const destination: Coord = { latitude: parking.latitude, longitude: parking.longitude };
-
-  const region: Region = {
-    latitude: parking.latitude,
-    longitude: parking.longitude,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  };
-
-  useEffect(() => {
-    if (!userLocation) return;
-
-    const { latitude: uLat, longitude: uLon } = userLocation;
-    const { latitude: pLat, longitude: pLon } = parking;
-
-    fetch(
-      `https://router.project-osrm.org/route/v1/driving/${uLon},${uLat};${pLon},${pLat}?overview=full&geometries=geojson`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        const coords: [number, number][] = data?.routes?.[0]?.geometry?.coordinates ?? [];
-        setRoute(coords.map(([lon, lat]) => ({ latitude: lat, longitude: lon })));
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!mapRef.current || route.length === 0 || !userLocation) return;
-    const points = [userLocation, destination];
-    mapRef.current.fitToCoordinates(points, {
-      edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
-      animated: true,
-    });
-  }, [route]);
-
-  return (
-    <MapView
-      ref={mapRef}
-      style={mapStyles.map}
-      initialRegion={region}
-      showsUserLocation={!!userLocation}
-      showsMyLocationButton={false}
-    >
-      <Marker coordinate={destination} pinColor={theme.tint} />
-      {route.length > 0 && (
-        <Polyline
-          coordinates={route}
-          strokeColor={theme.tint}
-          strokeWidth={3}
-        />
-      )}
-    </MapView>
-  );
-}
-
-const mapStyles = StyleSheet.create({ map: { flex: 1, width: '100%' } });
 
 export default function ParkingDetail({
   parking,

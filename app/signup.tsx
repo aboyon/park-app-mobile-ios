@@ -1,6 +1,6 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
@@ -20,8 +20,16 @@ export default function SignupScreen() {
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   if (token) return <Redirect href="/(tabs)" />;
+
+  const canSubmit =
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    passwordConfirmation.length > 0 &&
+    termsAccepted;
 
   const handleSignup = async () => {
     if (password !== passwordConfirmation) {
@@ -103,15 +111,39 @@ export default function SignupScreen() {
       <Text style={styles.label}>{t('signup.confirmPassword')}</Text>
       <TextInput
         style={styles.input}
-        placeholder={t('signup.confirmPasswordPlaceholder')}
+        placeholder={t('signup.password')}
         value={passwordConfirmation}
         onChangeText={setPasswordConfirmation}
         secureTextEntry
       />
 
+      <TouchableOpacity
+        style={styles.termsRow}
+        onPress={() => setTermsAccepted(v => !v)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+          {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
+        </View>
+        <Text style={styles.termsText}>
+          {t('signup.iAccept')}{' '}
+          <Text style={styles.termsLink} onPress={() => Linking.openURL('https://parke.ar/terminos/')}>
+            {t('profile.terms')}
+          </Text>
+          {' '}{t('signup.and')}{' '}
+          <Text style={styles.termsLink} onPress={() => Linking.openURL('https://parke.ar/privacidad/')}>
+            {t('profile.privacy')}
+          </Text>
+        </Text>
+      </TouchableOpacity>
+
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
+      <TouchableOpacity
+        style={[styles.button, (!canSubmit || loading) && styles.buttonDisabled]}
+        onPress={handleSignup}
+        disabled={!canSubmit || loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -153,7 +185,7 @@ function makeStyles(theme: AppTheme) {
     },
     logoText: {
       fontSize: 36,
-      fontFamily: 'Syne_800ExtraBold',
+      fontWeight: 'bold',
       color: '#fff',
     },
     title: {
@@ -197,6 +229,49 @@ function makeStyles(theme: AppTheme) {
       color: '#fff',
       fontSize: 16,
       fontWeight: 'bold',
+    },
+    termsRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      width: '100%',
+      marginTop: 16,
+      marginBottom: 4,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      marginTop: 1,
+    },
+    checkboxChecked: {
+      backgroundColor: theme.tint,
+      borderColor: theme.tint,
+    },
+    checkmark: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: '700',
+      lineHeight: 16,
+    },
+    termsText: {
+      flex: 1,
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 20,
+    },
+    termsLink: {
+      color: theme.tint,
+      fontWeight: '600',
+    },
+    buttonDisabled: {
+      opacity: 0.45,
     },
     error: {
       color: '#ff3b30',

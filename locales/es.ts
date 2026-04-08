@@ -46,6 +46,9 @@ const es = {
     confirmPassword: 'Confirmar contraseña',
     confirmPasswordPlaceholder: 'Confirmar contraseña',
     passwordMismatch: 'Las contraseñas no coinciden',
+    mustAcceptTerms: 'Debés aceptar los términos y condiciones para continuar',
+    iAccept: 'Acepto los',
+    and: 'y la',
     couldNotCreate: 'No se pudo crear la cuenta',
     signUp: 'Crear cuenta',
     haveAccount: '¿Ya tenés cuenta? ',
@@ -56,10 +59,10 @@ const es = {
   home: {
     title: 'Estacionamientos cercanos',
     waitingForLocation: 'Esperando ubicación...',
-    foundParkings: 'Se encontraron %{count} estacionamientos cercanos',
+    foundParkings: '%{count} estacionamientos cercanos a tu ubicación',
     couldNotFetch: 'No se pudieron obtener los estacionamientos',
     notDriving: 'No estás conduciendo — toca actualizar para buscar',
-    searchNearby: 'Actualizar',
+    searchNearby: 'Buscar cercanos',
     searching: 'Buscando…',
     availableNow: 'Resultados',
     flexible: 'Flexible',
@@ -68,7 +71,7 @@ const es = {
     openToday: 'Abierto %{open} – %{close}',
     closedToday: 'Cerrado hoy',
     drivingAt: 'Estás manejando a',
-    noParkingsNearby: 'No hay estacionamientos disponibles cerca',
+    noParkingsNearby: 'No hay estacionamientos disponibles cerca. Si estas conduciendo, intenta ampliar tu búsqueda o verificar tu ubicación. Si te detuviste presiona en "Buscar Cercanos"',
   },
 
   // Reservations list
@@ -299,7 +302,8 @@ const es = {
     deleteTitle: 'Eliminar reserva',
     deleteMessage: '¿Querés eliminar esta reserva?',
     changeParking: 'Cambiar',
-    parkingId: 'ID'
+    parkingId: 'ID',
+    sectionHours: 'HORARIOS DE ATENCIÓN',
   },
 
   // Notifications

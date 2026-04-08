@@ -13,12 +13,9 @@ function ParkeArLogo() {
   const theme = useAppTheme();
   return (
     <View style={logoStyles.container}>
-      <Text style={[logoStyles.text, { color: theme.text }]}>
-        parke
-      </Text>
-      <Text style={[logoStyles.text, { color: theme.tint }]}>
-        .ar
-      </Text>
+      <Text style={[logoStyles.text, { color: theme.text }]}>parke</Text>
+      <Text style={[logoStyles.text, { color: theme.tint }]}>.ar</Text>
+      <Text style={[logoStyles.separator, { color: theme.textMuted }]}> ·</Text>
     </View>
   );
 }
@@ -33,6 +30,10 @@ const logoStyles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Syne_800ExtraBold',
     letterSpacing: -0.5,
+  },
+  separator: {
+    fontSize: 16,
+    fontFamily: 'Syne_700Bold',
   },
 });
 
@@ -65,7 +66,11 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: true,
         headerLeft: () => <ParkeArLogo />,
-        headerTitle: () => null,
+        headerTitleAlign: 'left',
+        headerTitleStyle: {
+          fontSize: 14,
+          paddingTop: 2,
+        },
         headerStyle: {
           backgroundColor: theme.card,
         },

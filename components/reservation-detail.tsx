@@ -321,11 +321,11 @@ function makeStyles(theme: AppTheme) {
     },
     content: {
       padding: 8,
-      paddingTop: 60,
+      paddingTop: 20,
       paddingBottom: 40,
     },
     backButton: { marginBottom: 20 },
-    backText: { fontSize: 16, color: '#6366f1' },
+    backText: { fontSize: 16, color: theme.tint },
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,

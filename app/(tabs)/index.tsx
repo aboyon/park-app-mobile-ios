@@ -161,9 +161,6 @@ export default function IndexScreen() {
   return (
     <View style={styles.container}>
       {/* Large title header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('home.title')}</Text>
-      </View>
 
       {/* Speed indicator — fixed top-right overlay */}
       <View style={styles.speedOverlay}>

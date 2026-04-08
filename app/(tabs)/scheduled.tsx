@@ -1,6 +1,6 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useFocusEffect } from 'expo-router';
-import { CalendarClock, Map, Phone } from 'lucide-react-native';
+import { Bike, CalendarClock, Car, Check, Map, Phone, Truck } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,15 +20,37 @@ import {
 import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale } from '@/context/locale';
+import { ParkingMap, type ParkingCoords } from '@/components/parking-map';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ParkingResult = {
-  parking_id: string;
+  id: string;
   name: string;
   address: string;
+  latitude: number;
+  longitude: number;
 };
+
+type Vehicle = {
+  id: string;
+  license_plate: string;
+  vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
+  is_default: boolean;
+};
+
+type Opening = {
+  open_at: string;
+  close_at: string;
+};
+
+type VehicleRate = {
+  rate_per_hour: number;
+  rate_per_hour_cents: number;
+};
+
+type VehicleRates = Record<string, VehicleRate>;
 
 type Product = {
   id: string;
@@ -37,6 +59,8 @@ type Product = {
   phone?: string;
   latitude: number;
   longitude: number;
+  today_rate_cents?: VehicleRates;
+  openings?: Opening[];
 };
 
 type ScheduledReservation = {
@@ -44,6 +68,7 @@ type ScheduledReservation = {
   start_time: string;
   end_time: string;
   status?: string;
+  vehicle_id?: string;
   product?: Product;
 };
 
@@ -52,6 +77,18 @@ type FormState = {
   parking_name: string;
   start_time: Date;
   end_time: Date;
+  vehicle_id: string | null;
+};
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+type LucideIcon = typeof Car;
+const VEHICLE_ICON: Record<string, LucideIcon> = {
+  car: Car,
+  truck: Truck,
+  motorcycle: Bike,
+  pickup: Truck,
+  suv: Car,
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,7 +107,7 @@ function defaultEnd(): Date {
 }
 
 function blankForm(): FormState {
-  return { parking_id: null, parking_name: '', start_time: defaultStart(), end_time: defaultEnd() };
+  return { parking_id: null, parking_name: '', start_time: defaultStart(), end_time: defaultEnd(), vehicle_id: null };
 }
 
 function formatDateTime(date: Date): string {
@@ -85,6 +122,24 @@ function formatDateRange(start: string, end: string): string {
     return `${s.toLocaleDateString(undefined, { dateStyle: 'medium' })}  ${s.toLocaleTimeString(undefined, { timeStyle: 'short' })} – ${e.toLocaleTimeString(undefined, { timeStyle: 'short' })}`;
   }
   return `${formatDateTime(s)} – ${formatDateTime(e)}`;
+}
+
+function formatRate(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}/h`;
+}
+
+function getWeekdayName(index: number, locale: string): string {
+  // openings array index: 0=Sunday … 6=Saturday, Jan 1 2023 was a Sunday
+  const date = new Date(2023, 0, 1 + index);
+  if (isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale || undefined, { weekday: 'long' }).format(date);
+}
+
+function formatOpenTime(timeStr: string): string {
+  const [h, m] = timeStr.split(':');
+  const d = new Date();
+  d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+  return d.toLocaleTimeString(undefined, { timeStyle: 'short' });
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -103,8 +158,6 @@ function openInMaps(latitude: number, longitude: number, name: string) {
 }
 
 // ─── DateTimeField ────────────────────────────────────────────────────────────
-// iOS:     compact native pill (display="compact") — tappable, expands inline
-// Android: tap to open, two-step date → time dialog
 
 function DateTimeField({
   label,
@@ -138,7 +191,6 @@ function DateTimeField({
     );
   }
 
-  // Android two-step: date picker → time picker
   const handleAndroidChange = (_: DateTimePickerEvent, selected?: Date) => {
     setShow(false);
     if (!selected) {
@@ -186,7 +238,7 @@ export default function ScheduledScreen() {
   const { token } = useAuth();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   // List state
   const [reservations, setReservations] = useState<ScheduledReservation[]>([]);
@@ -202,14 +254,21 @@ export default function ScheduledScreen() {
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  // Parking display-only (not sent in payload)
+  // Parking display-only
   const [selectedParkingAddress, setSelectedParkingAddress] = useState('');
+  const [selectedParkingCoords, setSelectedParkingCoords] = useState<ParkingCoords | null>(null);
+  const [parkingDetails, setParkingDetails] = useState<Product | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // Parking search state
   const [parkingQuery, setParkingQuery] = useState('');
   const [parkingResults, setParkingResults] = useState<ParkingResult[]>([]);
   const [parkingSearching, setParkingSearching] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Vehicle state
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
 
   // ── API ──────────────────────────────────────────────────────────────────
 
@@ -254,16 +313,61 @@ export default function ScheduledScreen() {
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
   }, [parkingQuery, token]);
 
+  const fetchVehicles = useCallback(async (currentVehicleId?: string | null) => {
+    setVehiclesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/my-vehicles`, { headers: apiHeaders(token!) });
+      if (!res.ok) return;
+      const data: Vehicle[] = await res.json();
+      setVehicles(data);
+      if (!currentVehicleId) {
+        const defaultV = data.find(v => v.is_default) ?? data[0];
+        if (defaultV) setForm(prev => ({ ...prev, vehicle_id: prev.vehicle_id ?? defaultV.id }));
+      }
+    } catch {} finally {
+      setVehiclesLoading(false);
+    }
+  }, [token]);
+
+  const fetchParkingDetails = useCallback(async (parkingId: string) => {
+    setDetailsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/parkings/${parkingId}`, { headers: apiHeaders(token!) });
+      if (res.ok) setParkingDetails(await res.json());
+    } catch {} finally {
+      setDetailsLoading(false);
+    }
+  }, [token]);
+
+  const fetchReservationDetail = useCallback(async (reservationId: string) => {
+    setDetailsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/scheduled-reservations/${reservationId}`, {
+        headers: apiHeaders(token!),
+      });
+      if (res.ok) {
+        const data: ScheduledReservation = await res.json();
+        if (data.product) setParkingDetails(data.product);
+      }
+    } catch {} finally {
+      setDetailsLoading(false);
+    }
+  }, [token]);
+
   // ── Navigation helpers ───────────────────────────────────────────────────
 
   const openCreate = () => {
     setForm(blankForm());
     setSelectedParkingAddress('');
+    setSelectedParkingCoords(null);
+    setParkingDetails(null);
     setParkingQuery('');
     setParkingResults([]);
     setSaveError('');
+    setVehicles([]);
     setEditing(null);
     setIsCreating(true);
+    fetchVehicles(null);
   };
 
   const openEdit = (r: ScheduledReservation) => {
@@ -272,22 +376,33 @@ export default function ScheduledScreen() {
       parking_name: r.product?.name ?? '',
       start_time: new Date(r.start_time),
       end_time: new Date(r.end_time),
+      vehicle_id: r.vehicle_id ?? null,
     });
     setSelectedParkingAddress(r.product?.address ?? '');
+    setSelectedParkingCoords(
+      r.product ? { latitude: r.product.latitude, longitude: r.product.longitude } : null
+    );
+    setParkingDetails(r.product ?? null);
     setParkingQuery('');
     setParkingResults([]);
     setSaveError('');
+    setVehicles([]);
     setIsCreating(false);
     setEditing(r);
+    fetchVehicles(r.vehicle_id ?? null);
+    fetchReservationDetail(r.id);
   };
 
   const closeForm = () => { setIsCreating(false); setEditing(null); };
 
   const selectParking = (p: ParkingResult) => {
     setSelectedParkingAddress(p.address);
-    setForm(prev => ({ ...prev, parking_id: p.parking_id, parking_name: p.name }));
+    setSelectedParkingCoords({ latitude: p.latitude, longitude: p.longitude });
+    setParkingDetails(null);
+    setForm(prev => ({ ...prev, parking_id: p.id, parking_name: p.name }));
     setParkingQuery('');
     setParkingResults([]);
+    fetchParkingDetails(p.id);
   };
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -313,6 +428,7 @@ export default function ScheduledScreen() {
             scheduleable_type: 'Parking',
             start_time: form.start_time.toISOString(),
             end_time: form.end_time.toISOString(),
+            ...(form.vehicle_id ? { vehicle_id: form.vehicle_id } : {}),
           },
         }),
       });
@@ -362,6 +478,10 @@ export default function ScheduledScreen() {
 
   if (isCreating || editing !== null) {
     const parkingSelected = form.parking_id !== null;
+    const rates = parkingDetails?.today_rate_cents;
+    const hasRates = rates && Object.keys(rates).length > 0;
+    const openings = parkingDetails?.openings;
+    const hasOpenings = openings && openings.length > 0;
 
     return (
       <KeyboardAvoidingView
@@ -394,7 +514,11 @@ export default function ScheduledScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.changeParkingButton}
-                  onPress={() => setForm(prev => ({ ...prev, parking_id: null, parking_name: '' }))}
+                  onPress={() => {
+                    setForm(prev => ({ ...prev, parking_id: null, parking_name: '' }));
+                    setSelectedParkingCoords(null);
+                    setParkingDetails(null);
+                  }}
                 >
                   <Text style={styles.changeParkingText}>{t('scheduled.changeParking')}</Text>
                 </TouchableOpacity>
@@ -418,7 +542,7 @@ export default function ScheduledScreen() {
                 {parkingResults.length > 0 && (
                   <View>
                     {parkingResults.map((p, index) => (
-                      <View key={p.parking_id}>
+                      <View key={p.id}>
                         {index > 0 && <View style={styles.groupDivider} />}
                         <TouchableOpacity
                           style={styles.searchResultRow}
@@ -443,6 +567,104 @@ export default function ScheduledScreen() {
               </>
             )}
           </View>
+
+          {/* Map — shown when a parking is selected */}
+          {selectedParkingCoords && (
+            <View style={styles.mapContainer}>
+              <ParkingMap
+                key={`${selectedParkingCoords.latitude},${selectedParkingCoords.longitude}`}
+                parking={selectedParkingCoords}
+                theme={theme}
+                style={styles.map}
+              />
+            </View>
+          )}
+
+          {/* Vehicle section */}
+          <Text style={styles.sectionHeader}>{t('parkingDetail.selectVehicle')}</Text>
+          {vehiclesLoading ? (
+            <ActivityIndicator color={theme.tint} style={styles.sectionLoader} />
+          ) : vehicles.length === 0 ? (
+            <View style={styles.groupCard}>
+              <Text style={styles.emptyRowText}>{t('parkingDetail.noVehicles')}</Text>
+            </View>
+          ) : (
+            <View style={styles.groupCard}>
+              {vehicles.map((v, i) => {
+                const Icon = VEHICLE_ICON[v.vehicle_type] ?? Car;
+                const selected = form.vehicle_id === v.id;
+                return (
+                  <View key={v.id}>
+                    {i > 0 && <View style={styles.groupDivider} />}
+                    <TouchableOpacity
+                      style={styles.vehicleRow}
+                      onPress={() => setForm(prev => ({ ...prev, vehicle_id: v.id }))}
+                      activeOpacity={0.7}
+                    >
+                      <Icon color={selected ? theme.tint : theme.textMuted} size={20} />
+                      <View style={styles.vehicleInfo}>
+                        <Text style={[styles.vehiclePlate, selected && styles.vehiclePlateSelected]}>
+                          {v.license_plate}
+                        </Text>
+                        <Text style={styles.vehicleType}>
+                          {t(`vehicles.types.${v.vehicle_type}`)}
+                          {v.is_default ? `  ·  ${t('common.default')}` : ''}
+                        </Text>
+                      </View>
+                      {selected && <Check color={theme.tint} size={18} />}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Today's rates */}
+          {detailsLoading && (
+            <ActivityIndicator color={theme.tint} style={styles.sectionLoader} />
+          )}
+          {!detailsLoading && hasRates && (
+            <>
+              <Text style={styles.sectionHeader}>{t('parkingDetail.todayRates')}</Text>
+              <View style={styles.groupCard}>
+                {Object.entries(rates!).map(([type, rate], i, arr) => {
+                  const Icon = VEHICLE_ICON[type] ?? Car;
+                  return (
+                    <View key={type}>
+                      {i > 0 && <View style={styles.groupDivider} />}
+                      <View style={styles.rateRow}>
+                        <Icon color={theme.textMuted} size={18} />
+                        <Text style={styles.rateVehicle}>
+                          {t(`vehicles.types.${type}`, { defaultValue: type })}
+                        </Text>
+                        <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Opening hours */}
+          {!detailsLoading && hasOpenings && (
+            <>
+              <Text style={styles.sectionHeader}>{t('scheduled.sectionHours')}</Text>
+              <View style={styles.groupCard}>
+                {openings!.map((o, i) => (
+                  <View key={i}>
+                    {i > 0 && <View style={styles.groupDivider} />}
+                    <View style={styles.openingRow}>
+                      <Text style={styles.openingDay}>{getWeekdayName(i, locale)}</Text>
+                      <Text style={styles.openingTime}>
+                        {formatOpenTime(o.open_at)} – {formatOpenTime(o.close_at)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Schedule section */}
           <Text style={styles.sectionHeader}>{t('scheduled.sectionSchedule')}</Text>
@@ -550,7 +772,6 @@ export default function ScheduledScreen() {
         </View>
       ) : (
         <>
-          <Text style={styles.sectionHeader}>{t('scheduled.sectionLabel')}</Text>
           <View style={styles.groupCard}>
             {reservations.map((item, index) => {
               const status = item.status ?? 'pending';
@@ -622,9 +843,8 @@ function makeStyles(theme: AppTheme) {
     outer: { flex: 1, backgroundColor: theme.pageBackground },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.pageBackground },
 
-    // Both views share the same horizontal padding
-    listContent: { paddingTop: 60, paddingHorizontal: 12, paddingBottom: 40 },
-    formContent: { paddingTop: 60, paddingHorizontal: 12, paddingBottom: 40 },
+    listContent: { paddingTop: 20, paddingHorizontal: 12, paddingBottom: 40 },
+    formContent: { paddingTop: 20, paddingHorizontal: 12, paddingBottom: 40 },
 
     // ── List ──
     listHeader: {
@@ -672,6 +892,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 10,
       marginTop: 10,
     },
+    sectionLoader: { marginVertical: 12 },
     groupCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
@@ -712,6 +933,19 @@ function makeStyles(theme: AppTheme) {
     // ── Form ──
     backButton: { marginBottom: 12 },
     backText: { fontSize: 16, color: theme.tint },
+
+    // ── Map ──
+    mapContainer: {
+      width: '100%',
+      height: 200,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 8,
+    },
+    map: {
+      width: '100%',
+      height: 200,
+    },
 
     // ── Parking search ──
     searchRow: {
@@ -759,6 +993,42 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.tint,
     },
     changeParkingText: { fontSize: 12, color: theme.tint, fontWeight: '600' },
+
+    // ── Vehicle picker ──
+    vehicleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    vehicleInfo: { flex: 1 },
+    vehiclePlate: { fontSize: 15, fontWeight: '600', color: theme.text },
+    vehiclePlateSelected: { color: theme.tint },
+    vehicleType: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    emptyRowText: { fontSize: 14, color: theme.textMuted, padding: 16 },
+
+    // ── Rates ──
+    rateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 10,
+    },
+    rateVehicle: { flex: 1, fontSize: 14, color: theme.text },
+    ratePrice: { fontSize: 14, fontWeight: '600', color: theme.tint },
+
+    // ── Opening hours ──
+    openingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+    },
+    openingDay: { fontSize: 14, color: theme.text, textTransform: 'capitalize' },
+    openingTime: { fontSize: 14, color: theme.textSecondary },
 
     // ── Date/time fields ──
     dateField: {

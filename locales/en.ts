@@ -46,6 +46,9 @@ const en = {
     confirmPassword: 'Confirm Password',
     confirmPasswordPlaceholder: 'Confirm password',
     passwordMismatch: 'Passwords do not match',
+    mustAcceptTerms: 'You must accept the terms and conditions to continue',
+    iAccept: 'I accept the',
+    and: 'and',
     couldNotCreate: 'Could not create account',
     signUp: 'Create Account',
     haveAccount: 'Already have an account? ',
@@ -299,7 +302,8 @@ const en = {
     deleteTitle: 'Delete Reservation',
     deleteMessage: 'Are you sure you want to delete this reservation?',
     changeParking: 'Change',
-    parkingId: 'ID'
+    parkingId: 'ID',
+    sectionHours: 'OPENING HOURS',
   },
 
   // Notifications

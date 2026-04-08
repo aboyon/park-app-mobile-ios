@@ -236,7 +236,7 @@ function makeStyles(theme: AppTheme) {
     },
     container: {
       paddingHorizontal: 8,
-      paddingTop: 60,
+      paddingTop: 20,
       paddingBottom: 40,
     },
     headerRow: {

@@ -160,8 +160,6 @@ export default function PreferencesScreen() {
           <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>{t('profile.preferences')}</Text>
-
         <Text style={styles.sectionLabel}>{t('profile.sectionLabel')}</Text>
         <View style={styles.card}>
           <Text style={styles.label}>{t('profile.name')}</Text>
@@ -249,7 +247,7 @@ function makeStyles(theme: AppTheme) {
     },
     container: {
       paddingHorizontal: 8,
-      paddingTop: 40,
+      paddingTop: 20,
       paddingBottom: 40,
     },
     backButton: {

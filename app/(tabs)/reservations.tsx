@@ -105,7 +105,6 @@ export default function ReservationsScreen() {
       <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/(tabs)/profile')}>
         <Text style={styles.backText}>{t('common.back')}</Text>
       </TouchableOpacity>
-      <Text style={styles.heading}>{t('reservations.title')}</Text>
 
       {reservations.length === 0 ? (
         <View style={styles.emptyContainer}>
