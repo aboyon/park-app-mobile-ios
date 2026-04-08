@@ -1,17 +1,16 @@
 {
   "expo": {
-    "name": "park-app-poc",
+    "name": "parke-driver",
     "slug": "park-app-poc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "parkapppoc",
+    "scheme": "parkedriver",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "icon": "./assets/images/icon.png",
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.parkapppoc"
+      "bundleIdentifier": "ar.parke.driver"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.parkapppoc"
+      "package": "ar.parke.driver"
     },
     "web": {
       "output": "static",

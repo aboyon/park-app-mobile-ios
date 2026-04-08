@@ -1,5 +1,5 @@
 {
-  "name": "park-app-poc",
+  "name": "ar.parke.driver",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
