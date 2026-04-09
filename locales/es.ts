@@ -235,6 +235,9 @@ const es = {
     couldNotCancel: 'No se pudo cancelar la reserva',
     couldNotStart: 'No se pudo iniciar la reserva',
     qrHint: 'Mostrá este código en la entrada del estacionamiento',
+    serviceFee: 'Cargo por servicio (%{percentage}%)',
+    firstHourEstimate: 'Estimación primera hora',
+    flexibleNotice: 'No se realizará ningún cobro hasta que el personal del estacionamiento realice el check-in en el lugar.',
   },
 
   // Parking Detail
@@ -267,6 +270,7 @@ const es = {
     closedMessagePhone: 'Si creés que es un error, podés llamarlos al:',
     noSubscriptionTitle: 'No disponible en Parke.ar',
     noSubscriptionMessage: 'Este estacionamiento aún no opera con nosotros, por lo que no podemos garantizar disponibilidad. Pero podés intentar estacionar igualmente si querés.',
+    serviceFeeNotice: 'Se aplicará un cargo por servicio del %{percentage}% sobre la tarifa total de estacionamiento.',
   },
 
   // Require Vehicle Screen

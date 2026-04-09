@@ -44,6 +44,7 @@ type Parking = {
   parking_method?: ParkingMethod;
   today_rate_cents: VehicleRates;
   today_penalization_rates_cents: VehicleRates;
+  service_fee_percentage?: number;
   active_subscription?: { id?: string };
 };
 
@@ -266,6 +267,16 @@ export default function ParkingDetail({
             </View>
             );
           })}
+          {parking.service_fee_percentage != null && parking.service_fee_percentage > 0 && (
+            <>
+              <View style={styles.rateRowBorder} />
+              <Text style={styles.serviceFeeNotice}>
+                {t('parkingDetail.serviceFeeNotice', {
+                  percentage: Math.round(parking.service_fee_percentage * 100),
+                })}
+              </Text>
+            </>
+          )}
         </View>
       )}
 
@@ -544,6 +555,13 @@ function makeStyles(theme: AppTheme) {
       fontSize: 14,
       fontWeight: '700',
       color: theme.tint,
+    },
+    serviceFeeNotice: {
+      fontSize: 12,
+      color: theme.textMuted,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      lineHeight: 17,
     },
     closedCard: {
       backgroundColor: theme.card,

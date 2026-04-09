@@ -26,8 +26,10 @@ export type ActiveReservation = {
     address: string;
     keep_slot_open_minutes?: number;
     parking_method?: 'self' | 'parking_attendance' | 'both';
+    rate_policy_strategy?: string;
     rates?: Rate[];
     today_rate_cents?: Record<string, { rate_per_hour: number; rate_per_hour_cents: number; wday: number }>;
+    service_fee_percentage?: number;
   };
   vehicle?: {
     vehicle_type: string;

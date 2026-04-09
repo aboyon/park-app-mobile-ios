@@ -235,6 +235,9 @@ const en = {
     couldNotCancel: 'Could not cancel reservation',
     couldNotStart: 'Could not start reservation',
     qrHint: 'Show this code at the parking entrance',
+    serviceFee: 'Service fee (%{percentage}%)',
+    firstHourEstimate: 'First hour estimate',
+    flexibleNotice: 'No charge will be made until the parking staff checks you in at the location.',
   },
 
   // Parking Detail
@@ -267,6 +270,7 @@ const en = {
     closedMessagePhone: "If you think this is an error, you can call them at:",
     noSubscriptionTitle: 'Not available through Parke.ar',
     noSubscriptionMessage: 'This parking does not operate with us yet, so we cannot ensure availability. But you can still try to park there if you want.',
+    serviceFeeNotice: 'A %{percentage}% service fee will be applied over the total parking rate.',
   },
 
   // Require Vehicle Screen

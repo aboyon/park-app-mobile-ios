@@ -174,6 +174,7 @@ export default function ActiveReservationScreen({
   const currentRate = vehicleType
     ? todayRates[vehicleType]
     : Object.values(todayRates)[0];
+  const serviceFeePercentage = reservation.parking.service_fee_percentage ?? 0;
 
   return (
     <ScrollView
@@ -257,21 +258,69 @@ export default function ActiveReservationScreen({
                   ${calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)}
                 </Text>
               </View>
+              {serviceFeePercentage > 0 && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>
+                    {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
+                  </Text>
+                  <Text style={[styles.value, styles.costValue]}>
+                    ${(parseFloat(calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)) * serviceFeePercentage).toFixed(2)}
+                  </Text>
+                </View>
+              )}
             </>
           ) : (
             <Text style={styles.noRate}>{t('activeReservation.noRateAvailable')}</Text>
           )}
         </View>
       ) : (
-        keepMinutes != null && (
-          <View style={styles.countdownCard}>
-            <View style={styles.countdownAccent} />
-            <View style={styles.countdownBody}>
-              <Text style={styles.countdownTimer}>{formatCountdown(remainingSeconds)}</Text>
-              <Text style={styles.countdownLabel}>{t('activeReservation.toArrive')}</Text>
+        <>
+          {keepMinutes != null && (
+            <View style={styles.countdownCard}>
+              <View style={styles.countdownAccent} />
+              <View style={styles.countdownBody}>
+                <Text style={styles.countdownTimer}>{formatCountdown(remainingSeconds)}</Text>
+                <Text style={styles.countdownLabel}>{t('activeReservation.toArrive')}</Text>
+              </View>
             </View>
-          </View>
-        )
+          )}
+          {currentRate && (
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <Text style={styles.label}>{t('activeReservation.rate')}{vehicleType ? ` · ${vehicleType}` : ''}</Text>
+                <Text style={styles.value}>{formatRate(currentRate.rate_per_hour_cents)}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>{t('activeReservation.billedHours')}</Text>
+                <Text style={styles.value}>1 {t('common.hours')}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>{t('activeReservation.firstHourEstimate')}</Text>
+                <Text style={[styles.value, styles.costValue]}>
+                  ${calculateCost(3600, currentRate.rate_per_hour_cents)}
+                </Text>
+              </View>
+              {serviceFeePercentage > 0 && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>
+                    {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
+                  </Text>
+                  <Text style={[styles.value, styles.costValue]}>
+                    ${(parseFloat(calculateCost(3600, currentRate.rate_per_hour_cents)) * serviceFeePercentage).toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          {reservation.parking.rate_policy_strategy === 'flexible' && (
+            <View style={styles.flexibleNoticeCard}>
+              <View style={styles.flexibleNoticeAccent} />
+              <View style={styles.flexibleNoticeBody}>
+                <Text style={styles.flexibleNoticeText}>{t('activeReservation.flexibleNotice')}</Text>
+              </View>
+            </View>
+          )}
+        </>
       )}
 
       {error !== '' && <Text style={styles.error}>{error}</Text>}
@@ -433,6 +482,28 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       textAlign: 'center',
       paddingVertical: 8,
+    },
+    flexibleNoticeCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    flexibleNoticeAccent: {
+      width: 10,
+      backgroundColor: theme.tint,
+    },
+    flexibleNoticeBody: {
+      flex: 1,
+      padding: 14,
+    },
+    flexibleNoticeText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 18,
     },
     countdownCard: {
       backgroundColor: theme.card,
