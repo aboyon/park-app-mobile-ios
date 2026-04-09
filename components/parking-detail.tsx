@@ -132,7 +132,11 @@ export default function ParkingDetail({
         method: 'POST',
         headers: apiHeaders(token!),
         body: JSON.stringify({
-          reservation: { parking_id: parking.id, vehicle_id: selectedVehicleId },
+          reservation: {
+            parking_id: parking.id,
+            vehicle_id: selectedVehicleId,
+            ...(userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
+          },
         }),
       });
 
