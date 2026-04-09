@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Banknote, Check, CreditCard, Star } from 'lucide-react-native';
+import { CreditCard, Star } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,33 +49,22 @@ type PaymentMethod = {
 };
 
 type FormState = {
-  payment_method_render_type: PaymentMethodType;
-  // credit_card fields
   card_holder: string;
   card_id: string;
   expiration: string;
   payment_type_id: string;
   cvv: string;
   issuer_id: string;
-  // debit fields
-  cbu: string;
-  bank_name: string;
-  account_holder: string;
-  // common
   is_default: boolean;
 };
 
 const BLANK_FORM: FormState = {
-  payment_method_render_type: 'credit_card',
   card_holder: '',
   card_id: '',
   expiration: '',
   payment_type_id: '',
   cvv: '',
   issuer_id: '',
-  cbu: '',
-  bank_name: '',
-  account_holder: '',
   is_default: false,
 };
 
@@ -102,9 +91,7 @@ function methodSubtitle(m: PaymentMethod): string {
 }
 
 function MethodIcon({ m, color, size }: { m: PaymentMethod; color: string; size: number }) {
-  return m.payment_method_render_type === 'credit_card'
-    ? <CreditCard color={color} size={size} />
-    : <Banknote color={color} size={size} />;
+  return <CreditCard color={color} size={size} />;
 }
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
@@ -161,15 +148,9 @@ export default function PaymentsScreen() {
   useFocusEffect(useCallback(() => { fetchMethods(); }, [token]));
 
   const validate = (): string | null => {
-    if (form.payment_method_render_type === 'credit_card') {
-      if (!form.card_id.trim()) return t('payments.cardNumberRequired');
-      if (!form.card_holder.trim()) return t('payments.cardHolderRequired');
-      if (!form.expiration.trim()) return t('payments.expirationRequired');
-    } else {
-      if (!form.cbu.trim()) return t('payments.cbuRequired');
-      if (!form.bank_name.trim()) return t('payments.bankNameRequired');
-      if (!form.account_holder.trim()) return t('payments.accountHolderRequired');
-    }
+    if (!form.card_id.trim()) return t('payments.cardNumberRequired');
+    if (!form.card_holder.trim()) return t('payments.cardHolderRequired');
+    if (!form.expiration.trim()) return t('payments.expirationRequired');
     return null;
   };
 
@@ -179,31 +160,19 @@ export default function PaymentsScreen() {
     setSaving(true);
     setSaveError('');
     try {
-      let payload: Record<string, unknown>;
-
-      if (form.payment_method_render_type === 'credit_card') {
-        const [expMonth, expYear] = form.expiration.split('/');
-        const { token: mpToken, payment_method_id } = await tokenizeCard({
-          cardNumber: form.card_id.replace(/\s/g, ''),
-          securityCode: form.cvv,
-          expirationMonth: expMonth?.trim() ?? '',
-          expirationYear: expYear?.trim() ?? '',
-          cardholderName: form.card_holder,
-        });
-        payload = {
-          payment_method_render_type: 'credit_card',
-          token: mpToken,
-          is_default: form.is_default
-        };
-      } else {
-        payload = {
-          payment_method_render_type: 'debit',
-          debit_cbu: form.cbu,
-          debit_bank_name: form.bank_name,
-          debit_account_holder: form.account_holder,
-          is_default: form.is_default,
-        };
-      }
+      const [expMonth, expYear] = form.expiration.split('/');
+      const { token: mpToken } = await tokenizeCard({
+        cardNumber: form.card_id.replace(/\s/g, ''),
+        securityCode: form.cvv,
+        expirationMonth: expMonth?.trim() ?? '',
+        expirationYear: expYear?.trim() ?? '',
+        cardholderName: form.card_holder,
+      });
+      const payload: Record<string, unknown> = {
+        payment_method_render_type: 'credit_card',
+        token: mpToken,
+        is_default: form.is_default,
+      };
 
       const response = await fetch(`${API_BASE_URL}/api/payment-methods`, {
         method: 'POST',
@@ -267,7 +236,6 @@ export default function PaymentsScreen() {
   };
 
   const closeForm = () => { setIsAdding(false); setForm(BLANK_FORM); setSaveError(''); };
-  const isCreditCard = form.payment_method_render_type === 'credit_card';
 
   if (isAdding) {
     return (
@@ -284,132 +252,58 @@ export default function PaymentsScreen() {
             <Text style={styles.backText}>{t('common.back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.sectionHeader}>{t('payments.sectionType')}</Text>
+          <Text style={styles.sectionHeader}>{t('payments.sectionCardDetails')}</Text>
           <View style={styles.groupCard}>
-            {(['credit_card', 'debit'] as PaymentMethodType[]).map((value, index) => (
-              <View key={value}>
-                {index > 0 && <View style={styles.groupDivider} />}
-                <TouchableOpacity
-                  style={styles.typeRow}
-                  onPress={() => setForm({ ...BLANK_FORM, payment_method_render_type: value })}
-                >
-                  {value === 'credit_card'
-                    ? <CreditCard color={theme.textMuted} size={20} style={styles.typeIcon} />
-                    : <Banknote color={theme.textMuted} size={20} style={styles.typeIcon} />}
-                  <Text style={styles.typeLabel}>{t(`payments.types.${value}`)}</Text>
-                  {form.payment_method_render_type === value && (
-                    <Check color={theme.tint} size={16} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-
-          {isCreditCard ? (
-            <>
-              <Text style={styles.sectionHeader}>{t('payments.sectionCardDetails')}</Text>
-              <View style={styles.groupCard}>
-                <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>{t('payments.cardNumber')}</Text>
-                  <TextInput
-                    style={styles.stackedInput}
-                    value={form.card_id}
-                    onChangeText={(v) => setForm({ ...form, card_id: formatCardNumber(v) })}
-                    placeholder={t('payments.cardNumberPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="number-pad"
-                    maxLength={19}
-                  />
-                </View>
-                <View style={styles.groupDivider} />
-                <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>{t('payments.cardHolder')}</Text>
-                  <TextInput
-                    style={styles.stackedInput}
-                    value={form.card_holder}
-                    onChangeText={(v) => setForm({ ...form, card_holder: v })}
-                    placeholder={t('payments.cardHolderPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
-                    autoCapitalize="words"
-                  />
-                </View>
-                <View style={styles.groupDivider} />
-                <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>{t('payments.expiration')}</Text>
-                  <TextInput
-                    style={styles.stackedInput}
-                    value={form.expiration}
-                    onChangeText={(v) => setForm({ ...form, expiration: v })}
-                    placeholder={t('payments.expirationPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={7}
-                  />
-                </View>
-                <View style={styles.groupDivider} />
-                <View style={styles.stackedField}>
-                  <Text style={styles.stackedLabel}>{t('payments.cvv')}</Text>
-                  <TextInput
-                    style={styles.stackedInput}
-                    value={form.cvv}
-                    onChangeText={(v) => setForm({ ...form, cvv: v })}
-                    placeholder={t('payments.cvvPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.sectionHeader}>{t('payments.sectionAccountDetails')}</Text>
-              <View style={styles.groupCard}>
-              <View style={styles.stackedField}>
-                <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>{t('payments.cbu')}</Text>
-                </View>
-                <TextInput
-                  style={styles.stackedInput}
-                  value={form.cbu}
-                  onChangeText={(v) => setForm((prev) => ({ ...prev, cbu: v.replace(/\D/g, '') }))}
-                  placeholder={t('payments.cbuPlaceholder')}
-                  placeholderTextColor={theme.textMuted}
-                  keyboardType="number-pad"
-                  maxLength={22}
-                />
-              </View>
-              <View style={styles.groupDivider} />
-              <View style={styles.stackedField}>
-                <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>{t('payments.bankName')}</Text>
-                </View>
-                <TextInput
-                  style={styles.stackedInput}
-                  value={form.bank_name}
-                  onChangeText={(v) => setForm((prev) => ({ ...prev, bank_name: v }))}
-                  placeholder={t('payments.bankNamePlaceholder')}
-                  placeholderTextColor={theme.textMuted}
-                  autoCapitalize="words"
-                />
-              </View>
-              <View style={styles.groupDivider} />
-              <View style={styles.stackedField}>
-                <View pointerEvents="none">
-                  <Text style={styles.stackedLabel}>{t('payments.accountHolder')}</Text>
-                </View>
-                <TextInput
-                  key="account_holder_input"
-                  style={styles.stackedInput}
-                  value={form.account_holder}
-                  onChangeText={(v) => setForm((prev) => ({ ...prev, account_holder: v }))}
-                  placeholder={t('payments.accountHolderPlaceholder')}
-                  placeholderTextColor={theme.textMuted}
-                  autoCapitalize="words"
-                />
-              </View>
+            <View style={styles.stackedField}>
+              <Text style={styles.stackedLabel}>{t('payments.cardNumber')}</Text>
+              <TextInput
+                style={styles.stackedInput}
+                value={form.card_id}
+                onChangeText={(v) => setForm({ ...form, card_id: formatCardNumber(v) })}
+                placeholder={t('payments.cardNumberPlaceholder')}
+                placeholderTextColor={theme.textMuted}
+                keyboardType="number-pad"
+                maxLength={19}
+              />
             </View>
-            </>
-          )}
+            <View style={styles.groupDivider} />
+            <View style={styles.stackedField}>
+              <Text style={styles.stackedLabel}>{t('payments.cardHolder')}</Text>
+              <TextInput
+                style={styles.stackedInput}
+                value={form.card_holder}
+                onChangeText={(v) => setForm({ ...form, card_holder: v })}
+                placeholder={t('payments.cardHolderPlaceholder')}
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="words"
+              />
+            </View>
+            <View style={styles.groupDivider} />
+            <View style={styles.stackedField}>
+              <Text style={styles.stackedLabel}>{t('payments.expiration')}</Text>
+              <TextInput
+                style={styles.stackedInput}
+                value={form.expiration}
+                onChangeText={(v) => setForm({ ...form, expiration: v })}
+                placeholder={t('payments.expirationPlaceholder')}
+                placeholderTextColor={theme.textMuted}
+                keyboardType="numbers-and-punctuation"
+                maxLength={7}
+              />
+            </View>
+            <View style={styles.groupDivider} />
+            <View style={styles.stackedField}>
+              <Text style={styles.stackedLabel}>{t('payments.cvv')}</Text>
+              <TextInput
+                style={styles.stackedInput}
+                value={form.cvv}
+                onChangeText={(v) => setForm({ ...form, cvv: v })}
+                placeholder={t('payments.cvvPlaceholder')}
+                placeholderTextColor={theme.textMuted}
+                keyboardType="number-pad"
+              />
+            </View>
+          </View>
 
           <TextInput style={{ height: 0, opacity: 0 }} />
 
@@ -464,9 +358,6 @@ export default function PaymentsScreen() {
       <TouchableOpacity style={styles.backButton} onPress={() => router.navigate('/(tabs)/profile')}>
         <Text style={styles.backText}>{t('common.back')}</Text>
       </TouchableOpacity>
-      <View style={styles.header}>
-        <Text style={styles.heading}>{t('payments.title')}</Text>
-      </View>
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => { setForm(BLANK_FORM); setSaveError(''); setIsAdding(true); }}
@@ -546,7 +437,7 @@ export default function PaymentsScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     outer: { flex: 1, backgroundColor: theme.pageBackground },
-    container: { flex: 1, backgroundColor: theme.pageBackground, paddingTop: 60 },
+    container: { flex: 1, backgroundColor: theme.pageBackground, paddingTop: 20 },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.pageBackground },
     header: { paddingHorizontal: 20, marginBottom: 12 },
     heading: { fontSize: 24, fontWeight: 'bold', color: theme.text },
@@ -592,7 +483,7 @@ function makeStyles(theme: AppTheme) {
     deleteButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#ff3b30' },
     deleteText: { color: '#ff3b30', fontSize: 13, fontWeight: '600' },
     emptyText: { fontSize: 16, color: theme.textMuted, marginBottom: 16 },
-    formContent: { paddingTop: 60, paddingBottom: 40 },
+    formContent: { paddingTop: 20, paddingBottom: 40 },
     backButton: { marginBottom: 12, paddingHorizontal: 20 },
     backText: { fontSize: 16, color: theme.tint },
     sectionHeader: {
@@ -605,10 +496,6 @@ function makeStyles(theme: AppTheme) {
       shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     },
     groupDivider: { height: StyleSheet.hairlineWidth, backgroundColor: theme.divider, marginLeft: 16 },
-    typeRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, minHeight: 52 },
-    typeIcon: { fontSize: 20, marginRight: 12 },
-    typeLabel: { fontSize: 15, color: theme.text, flex: 1 },
-    typeCheck: { fontSize: 16, color: theme.tint, fontWeight: '600' },
     fieldRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 14, minHeight: 52,

@@ -315,7 +315,7 @@ function makeStyles(theme: AppTheme) {
     container: {
       flex: 1,
       backgroundColor: theme.pageBackground,
-      paddingTop: 60,
+      paddingTop: 20,
     },
     centered: {
       flex: 1,
@@ -424,7 +424,7 @@ function makeStyles(theme: AppTheme) {
     },
     // Form
     formContent: {
-      paddingTop: 60,
+      paddingTop: 20,
       paddingBottom: 40,
     },
     backButton: {

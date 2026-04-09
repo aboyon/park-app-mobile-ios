@@ -1,7 +1,8 @@
 import * as Location from 'expo-location';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { useFocusEffect } from 'expo-router';
 import { MapPin, RefreshCw } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import ParkingDetail from '@/components/parking-detail';
@@ -87,16 +88,25 @@ export default function IndexScreen() {
   const nearbyRadius = useRef<number>(NEARBY_RADIUS_METRES);
   const isNotDriving = speed !== null && speed <= MIN_DRIVING_SPEED_KMH;
   const isDriving = speed !== null && speed > MIN_DRIVING_SPEED_KMH;
+  const [screenFocused, setScreenFocused] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    setScreenFocused(true);
+    return () => {
+      setScreenFocused(false);
+      deactivateKeepAwake('home-search');
+    };
+  }, []));
 
   useEffect(() => {
+    if (!screenFocused) return;
     const tag = 'home-search';
     if (isDriving || manualLoading) {
       activateKeepAwakeAsync(tag);
     } else {
       deactivateKeepAwake(tag);
     }
-    return () => { deactivateKeepAwake(tag); };
-  }, [isDriving, manualLoading]);
+  }, [screenFocused, isDriving, manualLoading]);
 
   useEffect(() => {
     if (me?.notifiable_distance) nearbyRadius.current = me.notifiable_distance;

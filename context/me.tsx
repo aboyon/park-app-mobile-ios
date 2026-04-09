@@ -160,6 +160,8 @@ export function MeProvider({ children }: { children: ReactNode }) {
       const parkingName = meRef.current?.active_reservation?.parking.name;
       setNotificationAlert({ type: 'payment_completed', parkingName });
       refresh();
+    } else if (type === 'reservation_started') {
+      refresh();
     }
   }, [refresh]);
 
