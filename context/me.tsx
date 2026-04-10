@@ -74,9 +74,9 @@ const MeContext = createContext<MeContextType>({
   clearNotificationAlert: () => {},
 });
 
-// Module-level: track which push token has already been sent so it's only
-// registered once per app session regardless of how many times the user logs in.
-let registeredPushToken: string | null = null;
+// Module-level: track which (authToken, pushToken) pair has already been sent
+// so each user gets their token registered even on a shared device.
+let registered: { authToken: string; pushToken: string } | null = null;
 
 
 Notifications.setNotificationHandler({
@@ -114,13 +114,13 @@ export function MeProvider({ children }: { children: ReactNode }) {
         const { data: pushToken } = await Notifications.getExpoPushTokenAsync({
           projectId: '3cde002a-6754-482d-8754-6bd8c6e298c0',
         });
-        if (pushToken === registeredPushToken) return;
+        if (registered?.authToken === token && registered?.pushToken === pushToken) return;
         await fetch(`${API_BASE_URL}/api/app-notfication-token`, {
           method: 'PATCH',
           headers: apiHeaders(token),
           body: JSON.stringify({ app_notification_token: pushToken }),
         });
-        registeredPushToken = pushToken;
+        registered = { authToken: token, pushToken };
       } catch {}
     };
 
