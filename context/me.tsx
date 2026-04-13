@@ -44,10 +44,18 @@ export type Vehicle = {
   is_default: boolean;
 };
 
+export type Wallet = {
+  balance_cents:       number;
+  balance:             number;
+  minimum_topup_cents: number;
+  minimum_topup:       number;
+};
+
 type MeData = {
   notifiable_distance: number;
   active_reservation: ActiveReservation | null;
   user_vehicles: Vehicle[];
+  wallet: Wallet | null;
 };
 
 export type NotificationAlert = {

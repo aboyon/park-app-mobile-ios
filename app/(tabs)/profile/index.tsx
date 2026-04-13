@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Car, ClipboardList, CreditCard, FileText, LogOut, Moon, Settings, Shield, Smartphone, Sun, User } from 'lucide-react-native';
+import { Car, ClipboardList, FileText, LogOut, Moon, Settings, Shield, Smartphone, Sun, User, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 import { API_BASE_URL, apiHeaders } from '@/constants/config';
 import { useAuth } from '@/context/auth';
 import { useLocale, type SupportedLocale } from '@/context/locale';
+import { useMe } from '@/context/me';
 import { useTheme, type ThemePreference } from '@/context/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
@@ -40,11 +41,14 @@ export default function ProfileScreen() {
   const theme = useAppTheme();
   const { themePreference, setThemePreference } = useTheme();
   const { t, locale, setLocale } = useLocale();
+  const { me } = useMe();
   const styles = makeStyles(theme);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const walletBalance = me?.wallet?.balance ?? 0;
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -138,11 +142,14 @@ export default function ProfileScreen() {
           <View style={styles.accountRowDivider} />
           <TouchableOpacity
             style={styles.accountRow}
-            onPress={() => router.navigate('/(tabs)/payments')}
+            onPress={() => router.push('/(tabs)/profile/wallet')}
             activeOpacity={0.7}
           >
-            <CreditCard color={theme.tint} size={20} />
-            <Text style={styles.accountRowLabel}>{t('tabs.payments')}</Text>
+            <Wallet color={theme.tint} size={20} />
+            <Text style={styles.accountRowLabel}>{t('wallet.title')}</Text>
+            <Text style={styles.walletBalance}>
+              ${walletBalance.toLocaleString('es-AR', { minimumFractionDigits: 2 })} ARS
+            </Text>
             <Text style={styles.accountRowChevron}>›</Text>
           </TouchableOpacity>
           <View style={styles.accountRowDivider} />
@@ -366,6 +373,11 @@ function makeStyles(theme: AppTheme) {
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.divider,
       marginLeft: 48,
+    },
+    walletBalance: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginRight: 4,
     },
     logoutButton: {
       flexDirection: 'row',

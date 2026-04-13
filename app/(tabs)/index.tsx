@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useFocusEffect } from 'expo-router';
-import { MapPin, RefreshCw } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { MapPin, RefreshCw, TriangleAlert, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -71,9 +71,12 @@ function formatRate(cents: number): string {
   return `€${(cents / 100).toFixed(2)}/h`;
 }
 
+const LOW_BALANCE_THRESHOLD = 10000;
+
 export default function IndexScreen() {
   const { token } = useAuth();
   const { me } = useMe();
+  const router = useRouter();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
   const { t } = useLocale();
@@ -180,6 +183,27 @@ export default function IndexScreen() {
     );
   }
 
+  const walletBalance = me?.wallet?.balance ?? null;
+  const isNegativeBalance = walletBalance !== null && walletBalance < 0;
+  const isLowBalance = walletBalance !== null && walletBalance >= 0 && walletBalance < LOW_BALANCE_THRESHOLD;
+
+  if (isNegativeBalance) {
+    return (
+      <View style={styles.blockerContainer}>
+        <Wallet color={theme.tint} size={48} style={styles.blockerIcon} />
+        <Text style={styles.blockerTitle}>{t('home.negativeBalanceTitle')}</Text>
+        <Text style={styles.blockerMessage}>{t('home.negativeBalanceMessage')}</Text>
+        <TouchableOpacity
+          style={styles.blockerButton}
+          onPress={() => router.push('/(tabs)/profile/wallet/topup')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.blockerButtonText}>{t('home.negativeBalanceCTA')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Large title header */}
@@ -189,6 +213,20 @@ export default function IndexScreen() {
         <Text style={styles.speedNumber}>{speed !== null ? String(Math.max(0, speed)) : '—'}</Text>
         <Text style={styles.speedUnit}>km/h</Text>
       </View>
+
+      {isLowBalance && (
+        <TouchableOpacity
+          style={styles.lowBalanceBanner}
+          onPress={() => router.push('/(tabs)/profile/wallet/topup')}
+          activeOpacity={0.8}
+        >
+          <TriangleAlert color={theme.amber ?? '#f5a623'} size={16} />
+          <Text style={styles.lowBalanceText}>
+            {t('home.lowBalanceWarning', { balance: (walletBalance ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 }) })}
+          </Text>
+          <Text style={styles.lowBalanceCTA}>{t('home.lowBalanceCTA')}</Text>
+        </TouchableOpacity>
+      )}
 
       {status !== '' && <Text style={styles.statusText}>{status}</Text>}
 
@@ -433,6 +471,64 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       textAlign: 'center',
       marginTop: 40,
+    },
+    lowBalanceBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 15,
+      marginBottom: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      backgroundColor: 'rgba(245,166,35,0.12)',
+      borderWidth: 1,
+      borderColor: theme.amber ?? '#f5a623',
+    },
+    lowBalanceText: {
+      flex: 1,
+      fontSize: 13,
+      color: theme.amber ?? '#f5a623',
+    },
+    lowBalanceCTA: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.amber ?? '#f5a623',
+    },
+    blockerContainer: {
+      flex: 1,
+      backgroundColor: theme.pageBackground,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+      gap: 12,
+    },
+    blockerIcon: {
+      marginBottom: 8,
+    },
+    blockerTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    blockerMessage: {
+      fontSize: 15,
+      color: theme.textMuted,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    blockerButton: {
+      marginTop: 12,
+      backgroundColor: theme.tint,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 32,
+    },
+    blockerButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '700',
     },
   });
 }
