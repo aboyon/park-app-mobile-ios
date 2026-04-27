@@ -45,12 +45,12 @@ type Opening = {
   close_at: string;
 };
 
-type VehicleRate = {
-  rate_per_hour: number;
+type ParkingRate = {
+  day_of_week: number;
   rate_per_hour_cents: number;
+  rate_type: 'hourly' | 'half_day' | 'entire_day';
+  vehicle_type: string;
 };
-
-type VehicleRates = Record<string, VehicleRate>;
 
 type Product = {
   id: string;
@@ -59,7 +59,7 @@ type Product = {
   phone?: string;
   latitude: number;
   longitude: number;
-  today_rate_cents?: VehicleRates;
+  parking_rates?: ParkingRate[];
   openings?: Opening[];
 };
 
@@ -90,6 +90,16 @@ const VEHICLE_ICON: Record<string, LucideIcon> = {
   pickup: Truck,
   suv: Car,
 };
+
+const RATE_TYPES = ['hourly', 'half_day', 'entire_day'] as const;
+type RateType = typeof RATE_TYPES[number];
+const RATE_TYPE_KEY: Record<RateType, string> = {
+  hourly: 'rateTypeHourly',
+  half_day: 'rateTypeHalfDay',
+  entire_day: 'rateTypeEntireDay',
+};
+
+const VEHICLE_ORDER = ['car', 'suv', 'pickup', 'truck', 'motorcycle'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -478,10 +488,23 @@ export default function ScheduledScreen() {
 
   if (isCreating || editing !== null) {
     const parkingSelected = form.parking_id !== null;
-    const rates = parkingDetails?.today_rate_cents;
-    const hasRates = rates && Object.keys(rates).length > 0;
     const openings = parkingDetails?.openings;
     const hasOpenings = openings && openings.length > 0;
+
+    // Rates matrix — filtered to the day of week of the scheduled start
+    const reservationWday = form.start_time.getDay();
+    const dayRates = (parkingDetails?.parking_rates ?? []).filter(r => r.day_of_week === reservationWday);
+    const orderedVehicleTypes = VEHICLE_ORDER.filter(vt => dayRates.some(r => r.vehicle_type === vt));
+    const extraVehicleTypes = [...new Set(dayRates.map(r => r.vehicle_type))].filter(vt => !VEHICLE_ORDER.includes(vt));
+    const matrixVehicleTypes = [...orderedVehicleTypes, ...extraVehicleTypes];
+    const hasRates = matrixVehicleTypes.length > 0;
+
+    const getRate = (vehicleType: string, rateType: RateType): string => {
+      const entry = dayRates.find(r => r.vehicle_type === vehicleType && r.rate_type === rateType);
+      if (!entry) return 'N/A';
+      const amount = (entry.rate_per_hour_cents / 100).toLocaleString('es-AR', { minimumFractionDigits: 0 });
+      return rateType === 'hourly' ? `$${amount}/h` : `$${amount}`;
+    };
 
     return (
       <KeyboardAvoidingView
@@ -619,26 +642,47 @@ export default function ScheduledScreen() {
             </View>
           )}
 
-          {/* Today's rates */}
+          {/* Rates matrix */}
           {detailsLoading && (
             <ActivityIndicator color={theme.tint} style={styles.sectionLoader} />
           )}
           {!detailsLoading && hasRates && (
             <>
               <Text style={styles.sectionHeader}>{t('parkingDetail.todayRates')}</Text>
-              <View style={styles.groupCard}>
-                {Object.entries(rates!).map(([type, rate], i, arr) => {
-                  const Icon = VEHICLE_ICON[type] ?? Car;
+              <View style={styles.rateMatrix}>
+                {/* Header row */}
+                <View style={[styles.rateMatrixRow, styles.rateMatrixHeader]}>
+                  <View style={styles.rateMatrixVehicleCell} />
+                  {RATE_TYPES.map(rt => (
+                    <View key={rt} style={styles.rateMatrixCell}>
+                      <Text style={styles.rateMatrixHeaderText}>
+                        {t(`parkingDetail.${RATE_TYPE_KEY[rt]}`)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                {/* Data rows */}
+                {matrixVehicleTypes.map((vt, i) => {
+                  const Icon = VEHICLE_ICON[vt] ?? Car;
                   return (
-                    <View key={type}>
-                      {i > 0 && <View style={styles.groupDivider} />}
-                      <View style={styles.rateRow}>
-                        <Icon color={theme.textMuted} size={18} />
-                        <Text style={styles.rateVehicle}>
-                          {t(`vehicles.types.${type}`, { defaultValue: type })}
+                    <View key={vt} style={[styles.rateMatrixRow, i % 2 === 1 && styles.rateMatrixRowAlt]}>
+                      <View style={styles.rateMatrixVehicleCell}>
+                        <Icon color={theme.textMuted} size={14} />
+                        <Text style={styles.rateMatrixVehicleText}>
+                          {t(`vehicles.types.${vt}`, { defaultValue: vt })}
                         </Text>
-                        <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
                       </View>
+                      {RATE_TYPES.map(rt => {
+                        const value = getRate(vt, rt);
+                        const isNA = value === 'N/A';
+                        return (
+                          <View key={rt} style={styles.rateMatrixCell}>
+                            <Text style={[styles.rateMatrixValue, isNA && styles.rateMatrixNA]}>
+                              {value}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   );
                 })}
@@ -1008,16 +1052,60 @@ function makeStyles(theme: AppTheme) {
     vehicleType: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
     emptyRowText: { fontSize: 14, color: theme.textMuted, padding: 16 },
 
-    // ── Rates ──
-    rateRow: {
+    // ── Rates matrix ──
+    rateMatrix: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 8,
+    },
+    rateMatrixRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
     },
-    rateVehicle: { flex: 1, fontSize: 14, color: theme.text },
-    ratePrice: { fontSize: 14, fontWeight: '600', color: theme.tint },
+    rateMatrixHeader: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.divider,
+      paddingVertical: 8,
+    },
+    rateMatrixRowAlt: {
+      backgroundColor: theme.surface2 ?? 'rgba(0,0,0,0.03)',
+    },
+    rateMatrixVehicleCell: {
+      flex: 1.4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    rateMatrixCell: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    rateMatrixHeaderText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      textAlign: 'center',
+    },
+    rateMatrixVehicleText: {
+      fontSize: 13,
+      color: theme.text,
+      textTransform: 'capitalize',
+    },
+    rateMatrixValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.tint,
+      textAlign: 'center',
+    },
+    rateMatrixNA: {
+      color: theme.textMuted,
+      fontWeight: '400',
+    },
 
     // ── Opening hours ──
     openingRow: {

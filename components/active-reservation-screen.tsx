@@ -42,21 +42,35 @@ function formatRate(cents: number): string {
   return `$${(cents / 100).toFixed(2)}/h`;
 }
 
-function billedHours(elapsedSeconds: number): number {
-  return Math.ceil(elapsedSeconds / 3600);
+function billedSeconds(elapsed: number, minFracMin: number): number {
+  const unit = minFracMin * 60;
+  return Math.ceil(elapsed / unit) * unit;
 }
 
-function calculateCost(elapsedSeconds: number, ratePerHour: number): string {
-  const cost = billedHours(elapsedSeconds) * (ratePerHour / 100);
-  return `${cost.toFixed(2)}`;
+function formatBilledTime(billedSec: number): string {
+  const h = Math.floor(billedSec / 3600);
+  const m = Math.floor((billedSec % 3600) / 60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+function calculateCost(elapsed: number, rateCents: number, minFracMin: number = 60): string {
+  return ((billedSeconds(elapsed, minFracMin) / 3600) * (rateCents / 100)).toFixed(2);
+}
+
+function calcPeriods(elapsedSec: number, periodSec: number): number {
+  return Math.max(1, Math.ceil(elapsedSec / periodSec));
 }
 
 export default function ActiveReservationScreen({
   reservation,
   onDismiss,
+  onBack,
 }: {
   reservation: ActiveReservation;
   onDismiss: () => Promise<void>;
+  onBack?: () => void;
 }) {
   useKeepAwake();
 
@@ -82,33 +96,12 @@ export default function ActiveReservationScreen({
     getElapsedSeconds(reservation.start_time)
   );
 
-  // Countdown for pending reservations
+  // Countdown display for pending reservations (auto-cancel is handled by the global layout)
   useEffect(() => {
     if (isInProgress || keepMinutes == null) return;
-
-    const autoCancel = () => {
-      fetch(`${API_BASE_URL}/api/parking-reservations/${reservation.id}?expired_by_app=true`, {
-        method: 'DELETE',
-        headers: apiHeaders(token!),
-      })
-        .then(() => onDismiss())
-        .catch(() => {});
-    };
-
-    if (getRemainingSeconds(reservation.start_time, keepMinutes) === 0) {
-      autoCancel();
-      return;
-    }
-
     const interval = setInterval(() => {
-      const remaining = getRemainingSeconds(reservation.start_time, keepMinutes);
-      setRemainingSeconds(remaining);
-      if (remaining === 0) {
-        clearInterval(interval);
-        autoCancel();
-      }
+      setRemainingSeconds(getRemainingSeconds(reservation.start_time, keepMinutes));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [reservation.start_time, keepMinutes, isInProgress]);
 
@@ -170,11 +163,29 @@ export default function ActiveReservationScreen({
   };
 
   const vehicleType = reservation.vehicle?.vehicle_type;
-  const todayRates = reservation.parking.today_rate_cents ?? {};
-  const currentRate = vehicleType
-    ? todayRates[vehicleType]
-    : Object.values(todayRates)[0];
+  const todayRateCents = reservation.parking.today_rate_cents ?? {};
+  const vehicleRates = (vehicleType
+    ? (todayRateCents[vehicleType] ?? Object.values(todayRateCents)[0])
+    : Object.values(todayRateCents)[0]) ?? {};
   const serviceFeePercentage = reservation.parking.service_fee_percentage ?? 0;
+  const minFracMin = reservation.parking.minimum_fractionable_minutes ?? 60;
+  const rateType = reservation.rate_type_billing ?? 'hourly';
+  const isFixedPeriod = rateType === 'half_day' || rateType === 'entire_day';
+  const periodSeconds = rateType === 'half_day' ? 43200 : 86400;
+  const hourlyEntry = vehicleRates['hourly'];
+  const hourlyRateCents = (hourlyEntry?.rate ?? 0) * 100;
+
+  const rateSummaryLabel = rateType === 'half_day'
+    ? t('activeReservation.rateTypeHalfDay')
+    : rateType === 'entire_day'
+    ? t('activeReservation.rateTypeEntireDay')
+    : t('activeReservation.hourlyRate');
+
+  const rateSummaryValue = isFixedPeriod
+    ? `$${(vehicleRates[rateType]?.rate ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`
+    : hourlyEntry
+    ? formatRate(hourlyRateCents)
+    : `$ ${reservation.amount_due}`;
 
   return (
     <ScrollView
@@ -184,6 +195,12 @@ export default function ActiveReservationScreen({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
+      {onBack && (
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
+        </TouchableOpacity>
+      )}
+
       <Text style={styles.heading}>
         {isInProgress ? t('activeReservation.parkedAt') : t('activeReservation.reservedAt')}
       </Text>
@@ -218,8 +235,8 @@ export default function ActiveReservationScreen({
           <Text style={styles.value}>{formatDate(reservation.start_time)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>{t('activeReservation.hourlyRate')}</Text>
-          <Text style={[styles.value, styles.costValue]}>$ {reservation.amount_due}</Text>
+          <Text style={styles.label}>{rateSummaryLabel}</Text>
+          <Text style={[styles.value, styles.costValue]}>{rateSummaryValue}</Text>
         </View>
         <View style={styles.vehicleLicencePlate}>
           <Text style={styles.licensePlate}>{reservation.vehicle?.license_plate}</Text>
@@ -236,43 +253,89 @@ export default function ActiveReservationScreen({
       )}
 
       {isInProgress ? (
-        <View style={styles.card}>
-          <View style={styles.elapsed}>
-            <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
-            <Text style={styles.elapsedLabel}>{t('activeReservation.parkingDuration')}</Text>
-          </View>
-          <View style={styles.divider} />
-          {currentRate ? (
-            <>
-              <View style={styles.row}>
-                <Text style={styles.label}>{t('activeReservation.rate')}{vehicleType ? ` · ${vehicleType}` : ''}</Text>
-                <Text style={styles.value}>{formatRate(currentRate.rate_per_hour_cents)}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>{t('activeReservation.billedHours')}</Text>
-                <Text style={styles.value}>{billedHours(elapsedSeconds)} {t('common.hours')}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>{t('activeReservation.totalCost')}</Text>
-                <Text style={[styles.value, styles.costValue]}>
-                  ${calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)}
-                </Text>
-              </View>
-              {serviceFeePercentage > 0 && (
+        <>
+          <View style={styles.card}>
+            <View style={styles.elapsed}>
+              <Text style={styles.elapsedTimer}>{formatElapsed(elapsedSeconds)}</Text>
+              <Text style={styles.elapsedLabel}>{t('activeReservation.parkingDuration')}</Text>
+            </View>
+            <View style={styles.divider} />
+
+            {isFixedPeriod ? (
+              /* Half-day / entire-day billing */
+              (() => {
+                const periodRate = vehicleRates[rateType]?.rate ?? 0;
+                const periods = calcPeriods(elapsedSeconds, periodSeconds);
+                const totalCost = periods * periodRate;
+                const rateLabel = rateType === 'half_day'
+                  ? t('activeReservation.rateTypeHalfDay')
+                  : t('activeReservation.rateTypeEntireDay');
+                return (
+                  <>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.rate')}</Text>
+                      <Text style={styles.value}>{rateLabel}</Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.periods')}</Text>
+                      <Text style={styles.value}>{periods} × ${periodRate.toLocaleString('es-AR', { minimumFractionDigits: 0 })}</Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.totalCost')}</Text>
+                      <Text style={[styles.value, styles.costValue]}>${totalCost.toLocaleString('es-AR', { minimumFractionDigits: 0 })}</Text>
+                    </View>
+                  </>
+                );
+              })()
+            ) : hourlyEntry ? (
+              /* Hourly billing */
+              <>
                 <View style={styles.row}>
-                  <Text style={styles.label}>
-                    {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
-                  </Text>
+                  <Text style={styles.label}>{t('activeReservation.rate')}{vehicleType ? ` · ${vehicleType}` : ''}</Text>
+                  <Text style={styles.value}>{formatRate(hourlyRateCents)}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>{t('activeReservation.billedTime')}</Text>
+                  <Text style={styles.value}>{formatBilledTime(billedSeconds(elapsedSeconds, minFracMin))}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>{t('activeReservation.totalCost')}</Text>
                   <Text style={[styles.value, styles.costValue]}>
-                    ${(parseFloat(calculateCost(elapsedSeconds, currentRate.rate_per_hour_cents)) * serviceFeePercentage).toFixed(2)}
+                    ${calculateCost(elapsedSeconds, hourlyRateCents, minFracMin)}
                   </Text>
                 </View>
-              )}
-            </>
-          ) : (
-            <Text style={styles.noRate}>{t('activeReservation.noRateAvailable')}</Text>
+                {serviceFeePercentage > 0 && (
+                  <View style={styles.row}>
+                    <Text style={styles.label}>
+                      {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
+                    </Text>
+                    <Text style={[styles.value, styles.costValue]}>
+                      ${(parseFloat(calculateCost(elapsedSeconds, hourlyRateCents, minFracMin)) * serviceFeePercentage).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={styles.noRate}>{t('activeReservation.noRateAvailable')}</Text>
+            )}
+          </View>
+
+          {/* Renewal notice for fixed-period stays */}
+          {isFixedPeriod && calcPeriods(elapsedSeconds, periodSeconds) > 1 && (
+            <View style={styles.renewalNoticeCard}>
+              <View style={styles.renewalNoticeAccent} />
+              <View style={styles.renewalNoticeBody}>
+                <Text style={styles.renewalNoticeText}>
+                  {t('activeReservation.renewalNotice', {
+                    rateType: rateType === 'half_day'
+                      ? t('activeReservation.rateTypeHalfDay')
+                      : t('activeReservation.rateTypeEntireDay'),
+                  })}
+                </Text>
+              </View>
+            </View>
           )}
-        </View>
+        </>
       ) : (
         <>
           {keepMinutes != null && (
@@ -284,20 +347,57 @@ export default function ActiveReservationScreen({
               </View>
             </View>
           )}
-          {currentRate && (
+          {isFixedPeriod ? (
+            <View style={styles.card}>
+              {(() => {
+                const periodRate = vehicleRates[rateType]?.rate ?? 0;
+                const fixedRateLabel = rateType === 'half_day'
+                  ? t('activeReservation.rateTypeHalfDay')
+                  : t('activeReservation.rateTypeEntireDay');
+                return (
+                  <>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.rate')}</Text>
+                      <Text style={styles.value}>{fixedRateLabel}</Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.billedTime')}</Text>
+                      <Text style={styles.value}>{rateType === 'half_day' ? '12h' : '24h'}</Text>
+                    </View>
+                    <View style={styles.row}>
+                      <Text style={styles.label}>{t('activeReservation.totalCost')}</Text>
+                      <Text style={[styles.value, styles.costValue]}>
+                        ${periodRate.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+                      </Text>
+                    </View>
+                    {serviceFeePercentage > 0 && (
+                      <View style={styles.row}>
+                        <Text style={styles.label}>
+                          {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
+                        </Text>
+                        <Text style={[styles.value, styles.costValue]}>
+                          ${(periodRate * serviceFeePercentage).toFixed(2)}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
+            </View>
+          ) : hourlyEntry ? (
             <View style={styles.card}>
               <View style={styles.row}>
                 <Text style={styles.label}>{t('activeReservation.rate')}{vehicleType ? ` · ${vehicleType}` : ''}</Text>
-                <Text style={styles.value}>{formatRate(currentRate.rate_per_hour_cents)}</Text>
+                <Text style={styles.value}>{formatRate(hourlyRateCents)}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>{t('activeReservation.billedHours')}</Text>
-                <Text style={styles.value}>1 {t('common.hours')}</Text>
+                <Text style={styles.label}>{t('activeReservation.billedTime')}</Text>
+                <Text style={styles.value}>1h</Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>{t('activeReservation.firstHourEstimate')}</Text>
                 <Text style={[styles.value, styles.costValue]}>
-                  ${calculateCost(3600, currentRate.rate_per_hour_cents)}
+                  ${calculateCost(3600, hourlyRateCents, 60)}
                 </Text>
               </View>
               {serviceFeePercentage > 0 && (
@@ -306,12 +406,12 @@ export default function ActiveReservationScreen({
                     {t('activeReservation.serviceFee', { percentage: Math.round(serviceFeePercentage * 100) })}
                   </Text>
                   <Text style={[styles.value, styles.costValue]}>
-                    ${(parseFloat(calculateCost(3600, currentRate.rate_per_hour_cents)) * serviceFeePercentage).toFixed(2)}
+                    ${(parseFloat(calculateCost(3600, hourlyRateCents, 60)) * serviceFeePercentage).toFixed(2)}
                   </Text>
                 </View>
               )}
             </View>
-          )}
+          ) : null}
           {reservation.parking.rate_policy_strategy === 'flexible' && (
             <View style={styles.flexibleNoticeCard}>
               <View style={styles.flexibleNoticeAccent} />
@@ -352,8 +452,19 @@ function makeStyles(theme: AppTheme) {
     },
     container: {
       paddingHorizontal: 8,
-      paddingTop: 60,
+      paddingTop: 20,
       paddingBottom: 40,
+    },
+    backButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      alignSelf: 'flex-start',
+      marginBottom: 8,
+    },
+    backText: {
+      fontSize: 16,
+      color: theme.tint,
+      fontWeight: '500',
     },
     heading: {
       fontSize: 25,
@@ -501,6 +612,28 @@ function makeStyles(theme: AppTheme) {
       padding: 14,
     },
     flexibleNoticeText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      lineHeight: 18,
+    },
+    renewalNoticeCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      marginBottom: 16,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    renewalNoticeAccent: {
+      width: 10,
+      backgroundColor: theme.amber ?? '#f5a623',
+    },
+    renewalNoticeBody: {
+      flex: 1,
+      padding: 14,
+    },
+    renewalNoticeText: {
       fontSize: 13,
       color: theme.textMuted,
       lineHeight: 18,

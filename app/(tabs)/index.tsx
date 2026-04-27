@@ -5,6 +5,7 @@ import { MapPin, RefreshCw, TriangleAlert, Wallet } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import ActiveReservationScreen from '@/components/active-reservation-screen';
 import ParkingDetail from '@/components/parking-detail';
 import { API_BASE_URL, apiHeaders, MIN_DRIVING_SPEED_KMH, NEARBY_RADIUS_METRES } from '@/constants/config';
 import { useAuth } from '@/context/auth';
@@ -13,10 +14,7 @@ import { useMe } from '@/context/me';
 import { useSearchPreferences } from '@/context/search-preferences';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-type ParkingRate = {
-  week_of_day: number;
-  rate_per_hour_cents: number;
-};
+type RateEntry = { rate: number; rate_type: 'hourly' | 'half_day' | 'entire_day'; wday: number };
 
 type Vehicle = {
   id: string;
@@ -24,14 +22,6 @@ type Vehicle = {
   vehicle_type: 'car' | 'truck' | 'motorcycle' | 'suv' | 'pickup';
   is_default: boolean;
 };
-
-type VehicleRate = {
-  rate_per_hour: number;
-  rate_per_hour_cents: number;
-  wday: number;
-};
-
-type VehicleRates = Record<string, VehicleRate>;
 
 type Opening = {
   open_at: string;
@@ -50,16 +40,17 @@ type Parking = {
   rate_policy_strategy: string;
   lock_slot_charge_policy?: string;
   today_penalization_rate: string | null;
-  today_rate_cents: VehicleRates;
-  today_penalization_rates_cents: VehicleRates;
-  parking_rates?: ParkingRate[];
+  today_rate_cents: Record<string, Record<string, RateEntry>>;
+  today_penalization_rates_cents: Record<string, { rate_per_hour: number; rate_per_hour_cents: number; wday: number }>;
   openings?: Opening[];
   active_subscription?: { id?: string };
 };
 
-function getTodayRate(rates: ParkingRate[]): ParkingRate | null {
-  const today = new Date().getDay();
-  return rates.find((r) => r.week_of_day === today) ?? null;
+function getHourlyRate(today_rate_cents: Record<string, Record<string, RateEntry>>): number | null {
+  for (const vehicleRates of Object.values(today_rate_cents)) {
+    if (vehicleRates['hourly']) return vehicleRates['hourly'].rate;
+  }
+  return null;
 }
 
 function getTodayOpening(openings: Opening[]): Opening | null {
@@ -67,15 +58,11 @@ function getTodayOpening(openings: Opening[]): Opening | null {
   return openings[today] ?? null;
 }
 
-function formatRate(cents: number): string {
-  return `€${(cents / 100).toFixed(2)}/h`;
-}
-
 const LOW_BALANCE_THRESHOLD = 10000;
 
 export default function IndexScreen() {
   const { token } = useAuth();
-  const { me } = useMe();
+  const { me, refresh } = useMe();
   const router = useRouter();
   const theme = useAppTheme();
   const styles = makeStyles(theme);
@@ -87,6 +74,7 @@ export default function IndexScreen() {
   const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
   const [manualLoading, setManualLoading] = useState(false);
   const lastCoords = useRef<{ latitude: number; longitude: number } | null>(null);
+  const hasActiveReservation = !!me?.active_reservation;
 
   const nearbyRadius = useRef<number>(NEARBY_RADIUS_METRES);
   const isNotDriving = speed !== null && speed <= MIN_DRIVING_SPEED_KMH;
@@ -137,6 +125,8 @@ export default function IndexScreen() {
   };
 
   useEffect(() => {
+    if (hasActiveReservation) return;
+
     let subscriber: Location.LocationSubscription | null = null;
 
     const startTracking = async () => {
@@ -171,9 +161,18 @@ export default function IndexScreen() {
     return () => {
       subscriber?.remove();
     };
-  }, []);
+  }, [hasActiveReservation]);
 
-  if (selectedParking) {
+  if (hasActiveReservation && me?.active_reservation) {
+    return (
+      <ActiveReservationScreen
+        reservation={me.active_reservation}
+        onDismiss={refresh}
+      />
+    );
+  }
+
+  if (!hasActiveReservation && selectedParking) {
     return (
       <ParkingDetail
         parking={selectedParking}
@@ -187,7 +186,7 @@ export default function IndexScreen() {
   const isNegativeBalance = walletBalance !== null && walletBalance < 0;
   const isLowBalance = walletBalance !== null && walletBalance >= 0 && walletBalance < LOW_BALANCE_THRESHOLD;
 
-  if (isNegativeBalance) {
+  if (!hasActiveReservation && isNegativeBalance) {
     return (
       <View style={styles.blockerContainer}>
         <Wallet color={theme.tint} size={48} style={styles.blockerIcon} />
@@ -206,9 +205,6 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Large title header */}
-
-      {/* Speed indicator — fixed top-right overlay */}
       <View style={styles.speedOverlay}>
         <Text style={styles.speedNumber}>{speed !== null ? String(Math.max(0, speed)) : '—'}</Text>
         <Text style={styles.speedUnit}>km/h</Text>
@@ -259,7 +255,7 @@ export default function IndexScreen() {
         {parkings.length > 0 && (
           <View style={styles.groupCard}>
             {parkings.map((parking, index) => {
-              const rate = getTodayRate(parking.parking_rates ?? []);
+              const hourlyRate = getHourlyRate(parking.today_rate_cents ?? {});
               const opening = getTodayOpening(parking.openings ?? []);
               const hasSubscription = !!parking.active_subscription?.id;
 
@@ -295,8 +291,8 @@ export default function IndexScreen() {
                       )}
                     </View>
                     <View style={styles.rowRight}>
-                      {hasSubscription && rate && (
-                        <Text style={styles.rowRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
+                      {hasSubscription && hourlyRate != null && (
+                        <Text style={styles.rowRate}>${hourlyRate.toLocaleString('es-AR', { minimumFractionDigits: 0 })}/h</Text>
                       )}
                       <Text style={styles.rowChevron}>›</Text>
                     </View>
@@ -317,15 +313,6 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       backgroundColor: theme.pageBackground,
       paddingTop: 20,
-    },
-    header: {
-      paddingHorizontal: 15,
-      marginBottom: 4,
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: theme.text,
     },
     speedOverlay: {
       position: 'absolute',

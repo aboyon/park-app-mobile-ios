@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Bike, Car, Check, CreditCard, Truck } from 'lucide-react-native';
-import { useState } from 'react';
+import { Bike, CalendarDays, Car, Check, Clock, CreditCard, Sunrise, Truck } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ParkingMap } from '@/components/parking-map';
@@ -18,13 +18,17 @@ type Vehicle = {
   is_default: boolean;
 };
 
-type VehicleRate = {
+type RateEntry = {
+  rate: number;
+  rate_type: 'hourly' | 'half_day' | 'entire_day';
+  wday: number;
+};
+
+type PenalizationRate = {
   rate_per_hour: number;
   rate_per_hour_cents: number;
   wday: number;
 };
-
-type VehicleRates = Record<string, VehicleRate>;
 
 type ParkingMethod = 'self' | 'parking_attendance' | 'both';
 
@@ -42,25 +46,22 @@ type Parking = {
   lock_slot_charge_policy?: string;
   phone?: string;
   parking_method?: ParkingMethod;
-  today_rate_cents: VehicleRates;
-  today_penalization_rates_cents: VehicleRates;
+  today_rate_cents: Record<string, Record<string, RateEntry>>;
+  today_penalization_rates_cents: Record<string, PenalizationRate>;
   service_fee_percentage?: number;
+  minimum_fractionable_minutes?: number;
   active_subscription?: { id?: string };
 };
 
+type RateBillingType = 'hourly' | 'half_day' | 'entire_day';
+
 type LucideIcon = typeof Car;
-const VEHICLE_RATE_ICON: Record<string, LucideIcon> = {
-  car: Car,
-  truck: Truck,
-  motorcycle: Bike,
-  pickup: Truck,
-  suv: Car,
+const RATE_TYPE_ORDER: RateBillingType[] = ['hourly', 'half_day', 'entire_day'];
+const RATE_ICONS: Record<RateBillingType, LucideIcon> = {
+  hourly: Clock,
+  half_day: Sunrise,
+  entire_day: CalendarDays,
 };
-
-function formatRate(cents: number) {
-  return `$${(cents / 100).toFixed(2)}/h`;
-}
-
 
 type UserLocation = { latitude: number; longitude: number };
 
@@ -79,52 +80,71 @@ export default function ParkingDetail({
   const styles = makeStyles(theme);
   const router = useRouter();
   const { t } = useLocale();
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [vehiclesError, setVehiclesError] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+  const [noPaymentMethod, setNoPaymentMethod] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reservationError, setReservationError] = useState('');
+  const [pendingRateBillingType, setPendingRateBillingType] = useState<RateBillingType | null>(null);
 
-  const [selectingVehicle, setSelectingVehicle] = useState(false);
-  const [noPaymentMethod, setNoPaymentMethod] = useState(false);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(false);
-  const [vehiclesError, setVehiclesError] = useState('');
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/api/my-vehicles`, { headers: apiHeaders(token!) })
+      .then(res => (res.ok ? res.json() : Promise.reject()))
+      .then((data: Vehicle[]) => {
+        if (cancelled) return;
+        setVehicles(data);
+        const defaultV = data.find(v => v.is_default);
+        setSelectedVehicleId(defaultV?.id ?? data[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVehiclesError(t('parkingDetail.couldNotLoadData'));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setVehiclesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const openMaps = () => {
     const url = `maps://app?daddr=${parking.latitude},${parking.longitude}`;
     Linking.openURL(url);
   };
 
-  const handleReservePress = async () => {
-    setVehiclesError('');
-    setVehiclesLoading(true);
-    try {
-      const [vehiclesRes, paymentsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/my-vehicles`, { headers: apiHeaders(token!) }),
-        fetch(`${API_BASE_URL}/api/payment-methods`, { headers: apiHeaders(token!) }),
-      ]);
-      if (!vehiclesRes.ok) throw new Error();
-      const vehiclesData: Vehicle[] = await vehiclesRes.json();
-      const paymentsData: unknown[] = paymentsRes.ok ? await paymentsRes.json() : [];
+  const handleRateCTA = async (rateBillingType: RateBillingType) => {
+    if (reserving) return;
+    setPendingRateBillingType(rateBillingType);
+    setReservationError('');
 
-      if (paymentsData.length === 0) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/payment-methods`, { headers: apiHeaders(token!) });
+      const data: unknown[] = res.ok ? await res.json() : [];
+      if (data.length === 0) {
         setNoPaymentMethod(true);
-        setSelectingVehicle(true);
         return;
       }
-
-      setNoPaymentMethod(false);
-      setVehicles(vehiclesData);
-      const defaultVehicle = vehiclesData.find((v) => v.is_default);
-      setSelectedVehicleId(defaultVehicle?.id ?? vehiclesData[0]?.id ?? null);
-      setSelectingVehicle(true);
     } catch {
-      setVehiclesError(t('parkingDetail.couldNotLoadData'));
-    } finally {
-      setVehiclesLoading(false);
+      setReservationError(t('common.connectionError'));
+      return;
+    }
+
+    setNoPaymentMethod(false);
+
+    if (vehicles.length <= 1) {
+      const vehicleId = vehicles[0]?.id;
+      if (vehicleId) await handleReserve(rateBillingType, vehicleId);
+    } else {
+      setShowVehiclePicker(true);
     }
   };
 
-  const handleReserve = async () => {
+  const handleReserve = async (rateBillingType: RateBillingType, vehicleId: string) => {
     setReserving(true);
     setReservationError('');
     try {
@@ -134,7 +154,8 @@ export default function ParkingDetail({
         body: JSON.stringify({
           reservation: {
             parking_id: parking.id,
-            vehicle_id: selectedVehicleId,
+            vehicle_id: vehicleId,
+            rate_type_billing: rateBillingType,
             ...(userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
           },
         }),
@@ -146,7 +167,8 @@ export default function ParkingDetail({
         return;
       }
 
-      setSelectingVehicle(false);
+      setShowVehiclePicker(false);
+      setPendingRateBillingType(null);
       await refresh();
     } catch {
       setReservationError(t('common.connectionError'));
@@ -157,9 +179,33 @@ export default function ParkingDetail({
 
   const receivingVehicles = parking.available_slots <= 0 && parking.available === true;
   const noSlotsAvailable = parking.available_slots <= 0 && !receivingVehicles;
-  const noRatesToday = Object.keys(parking.today_rate_cents ?? {}).length === 0;
   const needsKey = parking.parking_method === 'parking_attendance' || parking.parking_method === 'both';
   const hasSubscription = !!parking.active_subscription?.id;
+  const ctaDisabled = noSlotsAvailable || reserving;
+
+  const vehicleRateMap = parking.today_rate_cents ?? {};
+  const allVehicleRates = Object.values(vehicleRateMap);
+  const noRatesToday = allVehicleRates.length === 0;
+
+  const getDisplayPrice = (rateType: RateBillingType): string => {
+    const primary = vehicles.find(v => v.is_default) ?? vehicles[0];
+    const entry = primary
+      ? (vehicleRateMap[primary.vehicle_type]?.[rateType] ?? allVehicleRates.find(vr => vr[rateType] != null)?.[rateType])
+      : allVehicleRates.find(vr => vr[rateType] != null)?.[rateType];
+    if (!entry) return '';
+    const amount = entry.rate.toLocaleString('es-AR', { minimumFractionDigits: 0 });
+    return rateType === 'hourly' ? `$${amount}/h` : `$${amount}`;
+  };
+
+  const availableRates: { type: RateBillingType; price: string }[] = RATE_TYPE_ORDER
+    .filter(rt => allVehicleRates.some(vr => vr[rt] != null))
+    .map(type => ({ type, price: getDisplayPrice(type) }));
+
+  const rateLabel: Record<RateBillingType, string> = {
+    hourly: t('parkingDetail.rateTypeHourly'),
+    half_day: t('parkingDetail.rateTypeHalfDay'),
+    entire_day: t('parkingDetail.rateTypeEntireDay'),
+  };
 
   if (!hasSubscription) {
     return (
@@ -231,125 +277,150 @@ export default function ParkingDetail({
           </View>
         </View>
 
-      {needsKey && (
-        <View style={styles.keyNoteCard}>
-          <View style={styles.keyNoteAccent} />
-          <View style={styles.keyNoteBody}>
-            <Text style={styles.keyNoteText}>{t('parkingDetail.keyNote')}</Text>
-          </View>
-        </View>
-      )}
-
-      {noRatesToday ? (
-        <View style={styles.closedCard}>
-          <View style={styles.closedAccent} />
-          <View style={styles.closedBody}>
-            <Text style={styles.closedTitle}>{t('parkingDetail.closedTitle')}</Text>
-            <Text style={styles.closedMessage}>{t('parkingDetail.closedMessage')}</Text>
-            {parking.phone ? (
-              <>
-                <Text style={styles.closedMessage}>{t('parkingDetail.closedMessagePhone')}</Text>
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${parking.phone}`)}>
-                  <Text style={styles.closedPhone}>{parking.phone}</Text>
-                </TouchableOpacity>
-              </>
-            ) : null}
-          </View>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t('parkingDetail.todayRates')}</Text>
-          {Object.entries(parking.today_rate_cents).map(([type, rate], i, arr) => {
-            const RateIcon = VEHICLE_RATE_ICON[type] ?? Car;
-            return (
-            <View key={type} style={[styles.rateRow, i < arr.length - 1 && styles.rateRowBorder]}>
-              <RateIcon color={theme.textMuted} size={18} style={styles.rateIcon} />
-              <Text style={styles.rateVehicle}>
-                {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
-              </Text>
-              <Text style={styles.ratePrice}>{formatRate(rate.rate_per_hour_cents)}</Text>
+        {needsKey && (
+          <View style={styles.keyNoteCard}>
+            <View style={styles.keyNoteAccent} />
+            <View style={styles.keyNoteBody}>
+              <Text style={styles.keyNoteText}>{t('parkingDetail.keyNote')}</Text>
             </View>
-            );
-          })}
-          {parking.service_fee_percentage != null && parking.service_fee_percentage > 0 && (
-            <>
-              <View style={styles.rateRowBorder} />
+          </View>
+        )}
+
+        {noRatesToday ? (
+          <View style={styles.closedCard}>
+            <View style={styles.closedAccent} />
+            <View style={styles.closedBody}>
+              <Text style={styles.closedTitle}>{t('parkingDetail.closedTitle')}</Text>
+              <Text style={styles.closedMessage}>{t('parkingDetail.closedMessage')}</Text>
+              {parking.phone ? (
+                <>
+                  <Text style={styles.closedMessage}>{t('parkingDetail.closedMessagePhone')}</Text>
+                  <TouchableOpacity onPress={() => Linking.openURL(`tel:${parking.phone}`)}>
+                    <Text style={styles.closedPhone}>{parking.phone}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>{t('parkingDetail.todayRates')}</Text>
+
+            {vehiclesLoading ? (
+              <ActivityIndicator color={theme.tint} style={styles.vehiclesLoader} />
+            ) : vehiclesError !== '' ? (
+              <Text style={styles.errorText}>{vehiclesError}</Text>
+            ) : vehicles.length === 0 ? (
+              <Text style={styles.vehiclesEmpty}>{t('parkingDetail.noVehicles')}</Text>
+            ) : (
+              <View style={styles.rateTypeGroup}>
+                {availableRates.map(({ type, price }) => {
+                  const RateIcon = RATE_ICONS[type];
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.rateTypeButton, ctaDisabled && styles.rateTypeButtonDisabled]}
+                      onPress={() => handleRateCTA(type)}
+                      disabled={ctaDisabled}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.rateTypeLeft}>
+                        <RateIcon color="#fff" size={18} style={styles.rateTypeIcon} />
+                        <Text style={styles.rateTypeLabel}>{rateLabel[type]}</Text>
+                      </View>
+                      <Text style={styles.rateTypePrice}>{price}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {parking.service_fee_percentage != null && parking.service_fee_percentage > 0 && (
               <Text style={styles.serviceFeeNotice}>
                 {t('parkingDetail.serviceFeeNotice', {
                   percentage: Math.round(parking.service_fee_percentage * 100),
                 })}
               </Text>
-            </>
-          )}
-        </View>
-      )}
-
-      {parking.rate_policy_strategy === 'strict' &&
-        Object.keys(parking.today_penalization_rates_cents ?? {}).length > 0 && (
-          <View style={styles.warningCard}>
-            <View style={styles.warningAccent} />
-            <View style={styles.warningBody}>
-              <Text style={styles.warningTitle}>
-                {t('parkingDetail.warningCharges', { minutes: parking.keep_slot_open_minutes })}
-              </Text>
-              {parking.lock_slot_charge_policy === 'flat_rate' ? (
-                <Text style={styles.warningRate}>
-                  {formatRate(Object.values(parking.today_penalization_rates_cents)[0].rate_per_hour_cents)}
-                </Text>
-              ) : (
-                Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
-                  <View key={type} style={styles.rateRow}>
-                    <Text style={styles.warningVehicle}>
-                      {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
-                    </Text>
-                    <Text style={styles.warningRate}>{formatRate(rate.rate_per_hour_cents)}</Text>
-                  </View>
-                ))
-              )}
-            </View>
+            )}
           </View>
         )}
 
-      {selectingVehicle ? (
-        <View style={styles.vehiclePicker}>
-          {noPaymentMethod ? (
-            <>
-              <View style={styles.noPaymentCard}>
-                <CreditCard color={theme.tint} size={48} style={styles.noPaymentIcon} />
-                <Text style={styles.noPaymentTitle}>{t('parkingDetail.noPaymentTitle')}</Text>
-                <Text style={styles.noPaymentMessage}>{t('parkingDetail.noPaymentMessage')}</Text>
-                <TouchableOpacity
-                  style={styles.addPaymentButton}
-                  onPress={() => { setSelectingVehicle(false); router.navigate('/(tabs)/payments'); }}
-                >
-                  <Text style={styles.addPaymentButtonText}>{t('parkingDetail.addPaymentMethod')}</Text>
-                </TouchableOpacity>
+        {parking.rate_policy_strategy === 'strict' &&
+          Object.keys(parking.today_penalization_rates_cents ?? {}).length > 0 && (
+            <View style={styles.warningCard}>
+              <View style={styles.warningAccent} />
+              <View style={styles.warningBody}>
+                <Text style={styles.warningTitle}>
+                  {t('parkingDetail.warningCharges', { minutes: parking.keep_slot_open_minutes })}
+                </Text>
+                {parking.lock_slot_charge_policy === 'flat_rate' ? (
+                  <Text style={styles.warningRate}>
+                    {`$${(Object.values(parking.today_penalization_rates_cents)[0].rate_per_hour_cents / 100).toFixed(2)}/h`}
+                  </Text>
+                ) : (
+                  Object.entries(parking.today_penalization_rates_cents).map(([type, rate]) => (
+                    <View key={type} style={styles.rateRow}>
+                      <Text style={styles.warningVehicle}>
+                        {t(`vehicles.types.${type}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) })}
+                      </Text>
+                      <Text style={styles.warningRate}>
+                        {`$${(rate.rate_per_hour_cents / 100).toFixed(2)}/h`}
+                      </Text>
+                    </View>
+                  ))
+                )}
               </View>
-              <TouchableOpacity
-                style={styles.cancelPickerButton}
-                onPress={() => { setSelectingVehicle(false); setNoPaymentMethod(false); }}
-              >
-                <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-          <Text style={styles.vehiclePickerTitle}>{t('parkingDetail.selectVehicle')}</Text>
+            </View>
+          )}
 
-          {vehiclesLoading ? (
-            <ActivityIndicator color={theme.tint} style={styles.vehiclesLoader} />
-          ) : vehiclesError !== '' ? (
-            <Text style={styles.errorText}>{vehiclesError}</Text>
-          ) : vehicles.length === 0 ? (
-            <Text style={styles.vehiclesEmpty}>{t('parkingDetail.noVehicles')}</Text>
-          ) : (
+        {reservationError !== '' && (
+          <Text style={styles.errorText}>{reservationError}</Text>
+        )}
+
+        {noPaymentMethod && (
+          <View style={styles.vehiclePicker}>
+            <View style={styles.noPaymentCard}>
+              <CreditCard color={theme.tint} size={48} style={styles.noPaymentIcon} />
+              <Text style={styles.noPaymentTitle}>{t('parkingDetail.noPaymentTitle')}</Text>
+              <Text style={styles.noPaymentMessage}>{t('parkingDetail.noPaymentMessage')}</Text>
+              <TouchableOpacity
+                style={styles.addPaymentButton}
+                onPress={() => { setNoPaymentMethod(false); router.navigate('/(tabs)/payments'); }}
+              >
+                <Text style={styles.addPaymentButtonText}>{t('parkingDetail.addPaymentMethod')}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.cancelPickerButton}
+              onPress={() => setNoPaymentMethod(false)}
+            >
+              <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {showVehiclePicker && (
+          <View style={styles.vehiclePicker}>
+            <Text style={styles.vehiclePickerTitle}>{t('parkingDetail.selectVehicle')}</Text>
+
+            {reservationError !== '' && (
+              <Text style={styles.errorText}>{reservationError}</Text>
+            )}
+
             <View style={styles.vehicleGroup}>
               {vehicles.map((vehicle, index) => (
                 <View key={vehicle.id}>
                   {index > 0 && <View style={styles.vehicleGroupDivider} />}
                   <TouchableOpacity
                     style={styles.vehicleRow}
-                    onPress={() => setSelectedVehicleId(vehicle.id)}
+                    onPress={() => {
+                      setSelectedVehicleId(vehicle.id);
+                      setShowVehiclePicker(false);
+                      if (pendingRateBillingType) {
+                        handleReserve(pendingRateBillingType, vehicle.id);
+                      }
+                    }}
+                    disabled={reserving}
                   >
                     <View style={styles.vehicleRowInfo}>
                       <Text style={styles.vehicleRowPlate}>{vehicle.license_plate}</Text>
@@ -367,58 +438,23 @@ export default function ParkingDetail({
                 </View>
               ))}
             </View>
-          )}
 
-          {reservationError !== '' && (
-            <Text style={styles.errorText}>{reservationError}</Text>
-          )}
+            <TouchableOpacity
+              style={styles.cancelPickerButton}
+              onPress={() => { setShowVehiclePicker(false); setPendingRateBillingType(null); }}
+            >
+              <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-          <TouchableOpacity
-            style={[
-              styles.reserveButton,
-              (!selectedVehicleId || reserving) && styles.reserveButtonDisabled,
-            ]}
-            onPress={handleReserve}
-            disabled={!selectedVehicleId || reserving}
-          >
-            {reserving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.reserveButtonText}>{t('parkingDetail.confirmReservation')}</Text>
-            )}
-          </TouchableOpacity>
+        {reserving && (
+          <ActivityIndicator color={theme.tint} style={styles.vehiclesLoader} />
+        )}
 
-          <TouchableOpacity
-            style={styles.cancelPickerButton}
-            onPress={() => setSelectingVehicle(false)}
-          >
-            <Text style={styles.cancelPickerText}>{t('common.cancel')}</Text>
-          </TouchableOpacity>
-            </>
-          )}
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={[
-            styles.reserveButton,
-            (noSlotsAvailable || noRatesToday) && styles.reserveButtonDisabled,
-          ]}
-          onPress={handleReservePress}
-          disabled={noSlotsAvailable || noRatesToday}
-        >
-          <Text style={styles.reserveButtonText}>
-            {noSlotsAvailable ? t('parkingDetail.noSlotsAvailable') : t('parkingDetail.reserveSpot')}
-          </Text>
+        <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
+          <Text style={styles.mapsButtonText}>{t('parkingDetail.openMaps')}</Text>
         </TouchableOpacity>
-      )}
-
-      {!selectingVehicle && reservationError !== '' && (
-        <Text style={styles.errorText}>{reservationError}</Text>
-      )}
-
-      <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
-        <Text style={styles.mapsButtonText}>{t('parkingDetail.openMaps')}</Text>
-      </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -445,6 +481,10 @@ function makeStyles(theme: AppTheme) {
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 0,
+    },
+    backButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
     },
     backText: {
       fontSize: 15,
@@ -536,35 +576,38 @@ function makeStyles(theme: AppTheme) {
       fontSize: 15,
       fontWeight: '600',
       color: theme.text,
-      marginBottom: 8,
+      marginBottom: 12,
     },
     rateRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: 4,
     },
-    rateRowBorder: {
+    vehicleTypeGroup: {
+      marginBottom: 16,
+      paddingBottom: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.divider,
     },
-    rateIcon: {
-      marginRight: 8,
+    vehicleTypeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
     },
-    rateVehicle: {
-      flex: 1,
-      fontSize: 14,
-      color: theme.text,
+    vehicleTypeIcon: {
+      marginRight: 6,
     },
-    ratePrice: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.tint,
+    vehicleTypeLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.textMuted,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
     },
     serviceFeeNotice: {
       fontSize: 12,
       color: theme.textMuted,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
+      paddingTop: 10,
       lineHeight: 17,
     },
     closedCard: {
@@ -634,22 +677,6 @@ function makeStyles(theme: AppTheme) {
       fontWeight: '700',
       color: '#f59e0b',
     },
-    reserveButton: {
-      backgroundColor: theme.tint,
-      padding: 15,
-      borderRadius: 10,
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    reserveButtonDisabled: {
-      opacity: 0.5,
-    },
-    reserveButtonText: {
-      color: '#fff',
-      fontSize: 16,
-      fontWeight: 'bold',
-    },
-    // Vehicle picker
     vehiclePicker: {
       marginBottom: 12,
     },
@@ -692,10 +719,6 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 14,
       minHeight: 56,
     },
-    vehicleRowIcon: {
-      fontSize: 22,
-      marginRight: 12,
-    },
     vehicleRowInfo: {
       flex: 1,
     },
@@ -718,6 +741,39 @@ function makeStyles(theme: AppTheme) {
     cancelPickerText: {
       fontSize: 15,
       color: theme.textSecondary,
+    },
+    rateTypeGroup: {
+      gap: 10,
+      marginBottom: 4,
+    },
+    rateTypeButton: {
+      backgroundColor: theme.tint,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    rateTypeLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    rateTypeIcon: {
+      marginRight: 10,
+    },
+    rateTypeButtonDisabled: {
+      opacity: 0.5,
+    },
+    rateTypeLabel: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    rateTypePrice: {
+      color: 'rgba(255,255,255,0.85)',
+      fontSize: 15,
+      fontWeight: '600',
     },
     noPaymentCard: {
       backgroundColor: theme.card,

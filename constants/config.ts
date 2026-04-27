@@ -1,11 +1,11 @@
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.56';
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://app.parke.ar';
 
 export const MP_PUBLIC_KEY = 'TEST-81b68f33-5310-49be-92b2-287dec588487'
 export const PARKAPP_API_VERSION = 'application/vnd.parkapp.v1+json'
 
 export const NEARBY_RADIUS_METRES = 500;
-export const MIN_DRIVING_SPEED_KMH = 10;
+export const MIN_DRIVING_SPEED_KMH = 20;
 
 import * as Localization from 'expo-localization';
 

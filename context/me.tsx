@@ -20,6 +20,7 @@ export type ActiveReservation = {
   start_time: string;
   end_time: string | null;
   amount_due: number;
+  rate_type_billing?: 'hourly' | 'half_day' | 'entire_day';
   parking: {
     id: string;
     name: string;
@@ -28,8 +29,9 @@ export type ActiveReservation = {
     parking_method?: 'self' | 'parking_attendance' | 'both';
     rate_policy_strategy?: string;
     rates?: Rate[];
-    today_rate_cents?: Record<string, { rate_per_hour: number; rate_per_hour_cents: number; wday: number }>;
+    today_rate_cents?: Record<string, Record<string, { rate: number; rate_type: string; wday: number }>>;
     service_fee_percentage?: number;
+    minimum_fractionable_minutes?: number;
   };
   vehicle?: {
     vehicle_type: string;

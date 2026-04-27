@@ -160,6 +160,8 @@ export default function PreferencesScreen() {
           <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
+        <Text style={styles.title}>{t('profile.preferences')}</Text>
+
         <Text style={styles.sectionLabel}>{t('profile.sectionLabel')}</Text>
         <View style={styles.card}>
           <Text style={styles.label}>{t('profile.name')}</Text>
